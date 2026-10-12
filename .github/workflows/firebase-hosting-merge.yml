@@ -20,6 +20,8 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_ENABLE_INVENTORY: ${{ vars.VITE_ENABLE_INVENTORY }}
+          VITE_ENABLE_ORDERS: ${{ vars.VITE_ENABLE_ORDERS }}
+          VITE_ENABLE_FINANCES: ${{ vars.VITE_ENABLE_FINANCES }}
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
