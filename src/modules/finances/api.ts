@@ -90,6 +90,10 @@ export async function createProject(payload: {
   iva_rate?: number;
   isr_retention_rate?: number;
   iva_retention_rate?: number;
+  unit_cost?: number | null;
+  total_pieces?: number;
+  print_info?: string | null;
+  status_note?: string | null;
   paymentSchedules?: Omit<IPaymentSchedule, 'id' | 'project_id'>[];
 }): Promise<IProject> {
   // 1. Insert project
@@ -109,6 +113,10 @@ export async function createProject(payload: {
       iva_rate: payload.iva_rate !== undefined ? payload.iva_rate : 0.16,
       isr_retention_rate: payload.isr_retention_rate || 0.0,
       iva_retention_rate: payload.iva_retention_rate || 0.0,
+      unit_cost: payload.unit_cost !== undefined ? payload.unit_cost : null,
+      total_pieces: payload.total_pieces || 0,
+      print_info: payload.print_info || null,
+      status_note: payload.status_note || null,
     })
     .select()
     .single();

@@ -17,10 +17,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { sileo } from "sileo";
-import { Calendar, Check, AlertTriangle, FileText, ExternalLink, Paperclip, Loader2, Trash2 } from "lucide-react";
+import { Calendar, Check, AlertTriangle, FileText, ExternalLink, Paperclip, Loader2, Trash2, Search, X } from "lucide-react";
 
 export function CuentasPorPagar() {
   const { data: expenses = [], isLoading } = useExpenses();
@@ -154,27 +154,6 @@ export function CuentasPorPagar() {
     }
   };
 
-  const pendingBills = React.useMemo(() => {
-    return expenses
-      .filter((e) => e.status !== "paid")
-      .sort((a, b) => {
-        if (!a.due_date) return 1;
-        if (!b.due_date) return -1;
-        return parseLocalDate(a.due_date).getTime() - parseLocalDate(b.due_date).getTime();
-      });
-  }, [expenses]);
-
-  const [currentPage, setCurrentPage] = React.useState(1);
-  const [itemsPerPage, setItemsPerPage] = React.useState(10);
-
-  const totalPages = Math.ceil(pendingBills.length / itemsPerPage);
-  const paginatedBills = React.useMemo(() => {
-    return pendingBills.slice(
-      (currentPage - 1) * itemsPerPage,
-      currentPage * itemsPerPage
-    );
-  }, [pendingBills, currentPage, itemsPerPage]);
-
   const getDaysRemaining = (dueDateStr?: string | null) => {
     if (!dueDateStr) return { days: 0, label: "Sin fecha", isOverdue: false };
     const due = parseLocalDate(dueDateStr);
@@ -193,6 +172,52 @@ export function CuentasPorPagar() {
       return { days: diffDays, label: `Quedan ${diffDays} días`, isOverdue: false };
     }
   };
+
+  const pendingBills = React.useMemo(() => {
+    return expenses
+      .filter((e) => e.status !== "paid")
+      .sort((a, b) => {
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return parseLocalDate(a.due_date).getTime() - parseLocalDate(b.due_date).getTime();
+      });
+  }, [expenses]);
+
+  // Search & Filter State
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("all");
+
+  const filteredBills = React.useMemo(() => {
+    return pendingBills.filter((b) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        (b.concept && b.concept.toLowerCase().includes(q)) ||
+        (b.supplier?.legal_name && b.supplier.legal_name.toLowerCase().includes(q)) ||
+        (b.supplier?.fiscal_name && b.supplier.fiscal_name.toLowerCase().includes(q)) ||
+        (b.category?.name && b.category.name.toLowerCase().includes(q)) ||
+        (b.amount && String(b.amount).includes(q));
+
+      const remaining = getDaysRemaining(b.due_date);
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "overdue" && remaining.isOverdue) ||
+        (statusFilter === "upcoming" && !remaining.isOverdue);
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [pendingBills, searchQuery, statusFilter]);
+
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [itemsPerPage, setItemsPerPage] = React.useState(10);
+
+  const totalPages = Math.ceil(filteredBills.length / itemsPerPage);
+  const paginatedBills = React.useMemo(() => {
+    return filteredBills.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+  }, [filteredBills, currentPage, itemsPerPage]);
 
   const totalAmountPending = pendingBills.reduce((sum, item) => sum + Number(item.amount), 0);
 
@@ -239,11 +264,64 @@ export function CuentasPorPagar() {
           <CardTitle>Listado de Cuentas Pendientes</CardTitle>
           <CardDescription>Visualiza las fechas límite de pago y liquida facturas pendientes.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por proveedor, concepto, categoría o monto..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                value={statusFilter}
+                onValueChange={(val) => {
+                  setStatusFilter(val);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Vencimiento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las cuentas</SelectItem>
+                  <SelectItem value="overdue">Vencidas</SelectItem>
+                  <SelectItem value="upcoming">En tiempo</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {(searchQuery || statusFilter !== "all") && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setStatusFilter("all");
+                    setCurrentPage(1);
+                  }}
+                  className="h-10 px-2 lg:px-3 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Limpiar
+                </Button>
+              )}
+            </div>
+          </div>
+
           {isLoading ? (
             <div className="text-center py-10">Cargando cuentas...</div>
-          ) : pendingBills.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground text-sm">No hay cuentas pendientes por pagar.</div>
+          ) : filteredBills.length === 0 ? (
+            <div className="text-center py-10 text-muted-foreground text-sm">
+              {pendingBills.length === 0
+                ? "No hay cuentas pendientes por pagar."
+                : "No se encontraron cuentas con los filtros seleccionados."}
+            </div>
           ) : (
             <>
               <Table>
@@ -339,7 +417,7 @@ export function CuentasPorPagar() {
                currentPage={currentPage}
                totalPages={totalPages}
                onPageChange={setCurrentPage}
-               totalItems={pendingBills.length}
+               totalItems={filteredBills.length}
                itemsPerPage={itemsPerPage}
                onItemsPerPageChange={setItemsPerPage}
              />

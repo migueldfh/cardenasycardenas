@@ -6,8 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TablePagination } from "@/components/ui/TablePagination";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Users, Pencil, Trash2 } from "lucide-react";
+import { Plus, Users, Pencil, Trash2, Search, X } from "lucide-react";
 import type { ISupplier } from "@/modules/finances/types";
 
 export function Providers() {
@@ -76,12 +78,36 @@ export function Providers() {
     }
   };
 
-  const filteredSuppliers = suppliers.filter(
-    (s) =>
-      s.legal_name.toLowerCase().includes(supplierSearch.toLowerCase()) ||
-      (s.fiscal_name || "").toLowerCase().includes(supplierSearch.toLowerCase()) ||
-      (s.tax_id_rfc || "").toLowerCase().includes(supplierSearch.toLowerCase())
-  );
+  const [filterRfc, setFilterRfc] = React.useState("all");
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [itemsPerPage, setItemsPerPage] = React.useState(10);
+
+  const filteredSuppliers = React.useMemo(() => {
+    return suppliers.filter((s) => {
+      const q = supplierSearch.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        s.legal_name.toLowerCase().includes(q) ||
+        (s.fiscal_name || "").toLowerCase().includes(q) ||
+        (s.tax_id_rfc || "").toLowerCase().includes(q) ||
+        (s.contact_info || "").toLowerCase().includes(q);
+
+      const matchesRfc =
+        filterRfc === "all" ||
+        (filterRfc === "with_rfc" && Boolean(s.tax_id_rfc)) ||
+        (filterRfc === "without_rfc" && !s.tax_id_rfc);
+
+      return matchesSearch && matchesRfc;
+    });
+  }, [suppliers, supplierSearch, filterRfc]);
+
+  const totalPages = Math.ceil(filteredSuppliers.length / itemsPerPage);
+  const paginatedSuppliers = React.useMemo(() => {
+    return filteredSuppliers.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+  }, [filteredSuppliers, currentPage, itemsPerPage]);
 
   return (
     <div className="space-y-6">
@@ -99,14 +125,55 @@ export function Providers() {
         <CardHeader className="pb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <CardTitle>Proveedores Registrados</CardTitle>
-            <CardDescription>Busca y visualiza los datos fiscales de tus proveedores.</CardDescription>
+            <CardDescription>
+              Mostrando {filteredSuppliers.length} de {suppliers.length} proveedores registrados.
+            </CardDescription>
           </div>
-          <Input
-            placeholder="Buscar por nombre o RFC..."
-            value={supplierSearch}
-            onChange={(e) => setSupplierSearch(e.target.value)}
-            className="max-w-xs"
-          />
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto items-stretch sm:items-center">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nombre, RFC o contacto..."
+                value={supplierSearch}
+                onChange={(e) => {
+                  setSupplierSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-9"
+              />
+            </div>
+            <Select
+              value={filterRfc}
+              onValueChange={(val) => {
+                setFilterRfc(val);
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[150px]">
+                <SelectValue placeholder="Filtro RFC" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los RFC</SelectItem>
+                <SelectItem value="with_rfc">Con RFC</SelectItem>
+                <SelectItem value="without_rfc">Sin RFC</SelectItem>
+              </SelectContent>
+            </Select>
+            {(supplierSearch || filterRfc !== "all") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSupplierSearch("");
+                  setFilterRfc("all");
+                  setCurrentPage(1);
+                }}
+                className="h-10 px-2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Limpiar
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -114,7 +181,8 @@ export function Providers() {
           ) : filteredSuppliers.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground text-sm">No se encontraron proveedores.</div>
           ) : (
-            <Table>
+            <>
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Nombre / Razón Social</TableHead>
@@ -125,7 +193,7 @@ export function Providers() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredSuppliers.map((s) => (
+                {paginatedSuppliers.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-semibold text-foreground">
                       <div className="flex items-center gap-2">
@@ -175,6 +243,15 @@ export function Providers() {
                 ))}
               </TableBody>
             </Table>
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={filteredSuppliers.length}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={setItemsPerPage}
+            />
+            </>
           )}
         </CardContent>
       </Card>

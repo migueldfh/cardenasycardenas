@@ -44,9 +44,14 @@ export function FinancesSidebar() {
       ]
     : [
         {
-          title: "Resumen",
+          title: "Resumen General",
           url: "/finances",
           icon: LayoutDashboard,
+        },
+        {
+          title: "Control Mensual",
+          url: "/finances/control-mensual",
+          icon: CalendarDays,
         },
         {
           title: "Proyectos & Procesos",

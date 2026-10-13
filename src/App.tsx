@@ -18,12 +18,16 @@ import { ProductDetail } from './modules/inventory/pages/ProductDetail';
 import { Clients } from './pages/admin/Clients';
 import { ClientDetail } from './pages/admin/ClientDetail';
 import { ClientStock } from './pages/ClientStock';
+import { ProductionLine } from './pages/admin/ProductionLine';
+import { Tracking } from './pages/admin/Tracking';
+import { ProductionHistory } from './pages/admin/ProductionHistory';
 import { MODULES_CONFIG } from './config/modules';
 import { ThemeProvider } from './contexts/ThemeContext';
 
 // Finances Module Layout & Pages
 import { FinancesLayout } from './modules/finances/layouts/FinancesLayout';
 import { FinancesDashboard } from './modules/finances/pages/FinancesDashboard';
+import { ControlMensual } from './modules/finances/pages/ControlMensual';
 import { Ingresos } from './modules/finances/pages/Ingresos';
 import { Facturas } from './modules/finances/pages/Facturas';
 import { Gastos } from './modules/finances/pages/Gastos';
@@ -76,9 +80,9 @@ function App() {
                 <Route path="clients/:id" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><ClientDetail /></ProtectedRoute>} />
                 <Route path="projects" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><ProjectsPage /></ProtectedRoute>} />
                 <Route path="providers" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><Providers /></ProtectedRoute>} />
-                <Route path="line" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><div>Línea de Producción</div></ProtectedRoute>} />
-                <Route path="tracking" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><div>Seguimiento</div></ProtectedRoute>} />
-                <Route path="history" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><div>Historial</div></ProtectedRoute>} />
+                <Route path="line" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><ProductionLine /></ProtectedRoute>} />
+                <Route path="tracking" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><Tracking /></ProtectedRoute>} />
+                <Route path="history" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><ProductionHistory /></ProtectedRoute>} />
               </Route>
 
               {/* Inventory Routes (separate layout) */}
@@ -108,6 +112,7 @@ function App() {
                   }
                 >
                   <Route index element={<ProtectedRoute allowedRoles={['admin', 'operator']}><FinancesDashboard /></ProtectedRoute>} />
+                  <Route path="control-mensual" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><ControlMensual /></ProtectedRoute>} />
                   <Route path="ingresos" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><Ingresos /></ProtectedRoute>} />
                   <Route path="facturas" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><Facturas /></ProtectedRoute>} />
                   <Route path="cotizaciones" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><Cotizaciones /></ProtectedRoute>} />

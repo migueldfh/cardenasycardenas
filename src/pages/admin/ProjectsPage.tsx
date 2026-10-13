@@ -489,6 +489,10 @@ export function ProjectsPage() {
     await updateProjectMutation.mutateAsync({
       id: createdProject.id,
       payload: {
+        unit_cost: data.projectData.unit_cost,
+        total_pieces: data.projectData.total_pieces,
+        print_info: data.projectData.print_info,
+        status_note: data.projectData.status_note,
         mold_name: data.projectData.mold_name,
         fabric_name: data.projectData.fabric_name,
         label_name: data.projectData.label_name,

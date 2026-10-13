@@ -45,6 +45,7 @@ import {
   Eye,
   Upload,
   ExternalLink,
+  X,
 } from "lucide-react";
 
 const projectStatusTranslations: Record<string, string> = {
@@ -633,8 +634,12 @@ export function Proyectos() {
 
   // Filter projects list
   const filteredProjects = processedProjects.filter((p) => {
-    const matchesSearch = p.name.toLowerCase().includes(projectSearch.toLowerCase()) ||
-      p.client?.name.toLowerCase().includes(projectSearch.toLowerCase());
+    const q = projectSearch.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      p.name.toLowerCase().includes(q) ||
+      (p.order_number && p.order_number.toLowerCase().includes(q)) ||
+      (p.client?.name && p.client.name.toLowerCase().includes(q));
     const matchesStatus = statusFilter === "all" || p.status === statusFilter;
     const matchesClient = clientFilter === "all" || p.client_id === clientFilter;
     return matchesSearch && matchesStatus && matchesClient;
@@ -701,6 +706,21 @@ export function Proyectos() {
                 <SelectItem value="cancelled">Cancelado</SelectItem>
               </SelectContent>
             </Select>
+            {(projectSearch || clientFilter !== "all" || statusFilter !== "all") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setProjectSearch("");
+                  setClientFilter("all");
+                  setStatusFilter("all");
+                }}
+                className="h-10 px-2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Limpiar
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

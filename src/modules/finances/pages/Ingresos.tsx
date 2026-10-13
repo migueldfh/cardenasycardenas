@@ -25,6 +25,8 @@ import {
   Loader2,
   Pencil,
   Trash2,
+  Search,
+  X,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -69,17 +71,44 @@ export function Ingresos() {
   const [isUploading, setIsUploading] = React.useState(false);
   const [allocatedAmounts, setAllocatedAmounts] = React.useState<Record<string, string>>({});
 
+  // Search & Filter State
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [methodFilter, setMethodFilter] = React.useState("all");
+  const [reconciledFilter, setReconciledFilter] = React.useState("all");
+
   // Pagination State
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
 
-  const totalPages = Math.ceil(payments.length / itemsPerPage);
+  const filteredPayments = React.useMemo(() => {
+    return payments.filter((pay) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        (pay.folio && pay.folio.toLowerCase().includes(q)) ||
+        (pay.project?.name && pay.project.name.toLowerCase().includes(q)) ||
+        (pay.project?.client?.name && pay.project.client.name.toLowerCase().includes(q)) ||
+        (pay.amount && String(pay.amount).includes(q));
+
+      const matchesMethod =
+        methodFilter === "all" || pay.method === methodFilter;
+
+      const matchesReconciled =
+        reconciledFilter === "all" ||
+        (reconciledFilter === "reconciled" && pay.is_reconciled) ||
+        (reconciledFilter === "pending" && !pay.is_reconciled);
+
+      return matchesSearch && matchesMethod && matchesReconciled;
+    });
+  }, [payments, searchQuery, methodFilter, reconciledFilter]);
+
+  const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
   const paginatedPayments = React.useMemo(() => {
-    return payments.slice(
+    return filteredPayments.slice(
       (currentPage - 1) * itemsPerPage,
       currentPage * itemsPerPage
     );
-  }, [payments, currentPage, itemsPerPage]);
+  }, [filteredPayments, currentPage, itemsPerPage]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(val);
@@ -323,14 +352,89 @@ export function Ingresos() {
           <CardTitle>Historial de Cobros</CardTitle>
           <CardDescription>Registro total de abonos recibidos por los clientes.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por cliente, proyecto, folio o monto..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                value={methodFilter}
+                onValueChange={(val) => {
+                  setMethodFilter(val);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Método" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los métodos</SelectItem>
+                  <SelectItem value="transfer">Transferencia</SelectItem>
+                  <SelectItem value="cash">Efectivo</SelectItem>
+                  <SelectItem value="card">Tarjeta</SelectItem>
+                  <SelectItem value="gateway">Pasarela</SelectItem>
+                  <SelectItem value="redistribution">Redistribución</SelectItem>
+                  <SelectItem value="atm_withdrawal">Retiro sin tarjeta</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={reconciledFilter}
+                onValueChange={(val) => {
+                  setReconciledFilter(val);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Reconciliación" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los estados</SelectItem>
+                  <SelectItem value="reconciled">Reconciliado</SelectItem>
+                  <SelectItem value="pending">Pendiente</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {(searchQuery || methodFilter !== "all" || reconciledFilter !== "all") && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setMethodFilter("all");
+                    setReconciledFilter("all");
+                    setCurrentPage(1);
+                  }}
+                  className="h-10 px-2 lg:px-3 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Limpiar
+                </Button>
+              )}
+            </div>
+          </div>
+
           {paymentsLoading ? (
             <div className="text-center py-10 flex flex-col items-center gap-2">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
               <span>Cargando cobros...</span>
             </div>
-          ) : payments.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground text-sm">No se han registrado cobros.</div>
+          ) : filteredPayments.length === 0 ? (
+            <div className="text-center py-10 text-muted-foreground text-sm">
+              {payments.length === 0
+                ? "No se han registrado cobros."
+                : "No se encontraron cobros con los filtros aplicados."}
+            </div>
           ) : (
             <>
               <Table>
@@ -401,7 +505,7 @@ export function Ingresos() {
                currentPage={currentPage}
                totalPages={totalPages}
                onPageChange={setCurrentPage}
-               totalItems={payments.length}
+               totalItems={filteredPayments.length}
                itemsPerPage={itemsPerPage}
                onItemsPerPageChange={setItemsPerPage}
              />

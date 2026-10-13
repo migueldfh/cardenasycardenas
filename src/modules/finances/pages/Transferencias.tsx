@@ -6,8 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TablePagination } from "@/components/ui/TablePagination";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { sileo } from "sileo";
-import { Coins, Landmark, ArrowLeftRight, ExternalLink } from "lucide-react";
+import { Coins, Landmark, ArrowLeftRight, ExternalLink, Search, X } from "lucide-react";
 
 export function Transferencias() {
   const { data: payments = [], isLoading } = usePayments();
@@ -26,6 +27,7 @@ export function Transferencias() {
   // Reset selected IDs when active tab changes
   React.useEffect(() => {
     setSelectedIds([]);
+    setSearchQuery("");
     setCurrentPage(1);
   }, [activeTab]);
 
@@ -71,7 +73,7 @@ export function Transferencias() {
 
   const handleSelectAll = () => {
     const pageIds = paginatedUnreconciledList.map((p) => p.id);
-    const allSelectedOnPage = pageIds.every((id) => selectedIds.includes(id));
+    const allSelectedOnPage = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
     if (allSelectedOnPage) {
       setSelectedIds(selectedIds.filter((id) => !pageIds.includes(id)));
     } else {
@@ -102,17 +104,33 @@ export function Transferencias() {
   // Active list config
   const currentUnreconciledList = activeTab === "cash" ? unreconciledCash : unreconciledTransfers;
 
+  // Search State
+  const [searchQuery, setSearchQuery] = React.useState("");
+
+  const filteredUnreconciledList = React.useMemo(() => {
+    return currentUnreconciledList.filter((p) => {
+      const q = searchQuery.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        (p.folio && p.folio.toLowerCase().includes(q)) ||
+        (p.project?.name && p.project.name.toLowerCase().includes(q)) ||
+        (p.project?.client?.name && p.project.client.name.toLowerCase().includes(q)) ||
+        (p.amount && String(p.amount).includes(q))
+      );
+    });
+  }, [currentUnreconciledList, searchQuery]);
+
   // Pagination State
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
 
-  const totalPages = Math.ceil(currentUnreconciledList.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredUnreconciledList.length / itemsPerPage);
   const paginatedUnreconciledList = React.useMemo(() => {
-    return currentUnreconciledList.slice(
+    return filteredUnreconciledList.slice(
       (currentPage - 1) * itemsPerPage,
       currentPage * itemsPerPage
     );
-  }, [currentUnreconciledList, currentPage, itemsPerPage]);
+  }, [filteredUnreconciledList, currentPage, itemsPerPage]);
 
   return (
     <div className="space-y-6">
@@ -249,14 +267,45 @@ export function Transferencias() {
               : "Verifica que las siguientes transferencias ya se reflejen en tu cuenta bancaria y márcalas como verificadas."}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por cliente, proyecto, folio o monto..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-9"
+              />
+            </div>
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery("");
+                  setCurrentPage(1);
+                }}
+                className="h-9 px-2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Limpiar búsqueda
+              </Button>
+            )}
+          </div>
+
           {isLoading ? (
             <div className="text-center py-10">Cargando datos...</div>
-          ) : currentUnreconciledList.length === 0 ? (
+          ) : filteredUnreconciledList.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground text-sm">
-              {activeTab === "cash"
-                ? "No hay efectivo físico pendiente en caja."
-                : "No hay transferencias bancarias pendientes por verificar."}
+              {currentUnreconciledList.length === 0
+                ? activeTab === "cash"
+                  ? "No hay efectivo físico pendiente en caja."
+                  : "No hay transferencias bancarias pendientes por verificar."
+                : "No se encontraron cobros con la búsqueda especificada."}
             </div>
           ) : (
             <>
@@ -327,7 +376,7 @@ export function Transferencias() {
                currentPage={currentPage}
                totalPages={totalPages}
                onPageChange={setCurrentPage}
-               totalItems={currentUnreconciledList.length}
+               totalItems={filteredUnreconciledList.length}
                itemsPerPage={itemsPerPage}
                onItemsPerPageChange={setItemsPerPage}
              />

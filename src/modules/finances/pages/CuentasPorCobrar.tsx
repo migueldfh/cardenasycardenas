@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   Check,
   ArrowRightLeft,
+  X,
 } from "lucide-react";
 
 const projectStatusTranslations: Record<string, string> = {
@@ -118,8 +119,12 @@ export function CuentasPorCobrar() {
   // Filters
   const filteredProjects = React.useMemo(() => {
     return projectDebts.filter((p) => {
-      const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.client?.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        (p.order_number && p.order_number.toLowerCase().includes(q)) ||
+        (p.client?.name && p.client.name.toLowerCase().includes(q));
       
       const matchesDebt = !showOnlyDebtors || p.remainingDebt > 0 || p.surplus > 0;
 
@@ -404,14 +409,26 @@ export function CuentasPorCobrar() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6 flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative flex-1 max-w-md w-full">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por cliente o proyecto..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
+          <div className="flex items-center gap-2 flex-1 max-w-md w-full">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por cliente, proyecto o folio..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearchQuery("")}
+                className="h-10 px-2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <input

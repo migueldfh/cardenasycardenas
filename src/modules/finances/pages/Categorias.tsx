@@ -8,22 +8,32 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { sileo } from "sileo";
-import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Loader2, Search } from "lucide-react";
 
 export function Categorias() {
   const { data: categories = [], isLoading } = useExpenseCategories();
   const createCategoryMutation = useCreateExpenseCategory();
   const deleteCategoryMutation = useDeleteExpenseCategory();
 
+  const [searchQuery, setSearchQuery] = React.useState("");
   const [isOpen, setIsOpen] = React.useState(false);
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
 
-  const totalPages = Math.ceil(categories.length / itemsPerPage);
-  const paginatedCategories = categories.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const filteredCategories = React.useMemo(() => {
+    return categories.filter((c) =>
+      c.name.toLowerCase().includes(searchQuery.toLowerCase().trim())
+    );
+  }, [categories, searchQuery]);
+
+  const totalPages = Math.ceil(filteredCategories.length / itemsPerPage);
+  const paginatedCategories = React.useMemo(() => {
+    return filteredCategories.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+  }, [filteredCategories, currentPage, itemsPerPage]);
+
   const [form, setForm] = React.useState({
     name: "",
     color_code: "#3b82f6",
@@ -68,9 +78,23 @@ export function Categorias() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Listado de Categorías</CardTitle>
-          <CardDescription>Visualiza las categorías registradas para tus egresos y presupuestos.</CardDescription>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <CardTitle>Listado de Categorías</CardTitle>
+            <CardDescription>Visualiza las categorías registradas para tus egresos y presupuestos.</CardDescription>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar categoría..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-9"
+            />
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -133,7 +157,7 @@ export function Categorias() {
                currentPage={currentPage}
                totalPages={totalPages}
                onPageChange={setCurrentPage}
-               totalItems={categories.length}
+               totalItems={filteredCategories.length}
                itemsPerPage={itemsPerPage}
                onItemsPerPageChange={setItemsPerPage}
              />

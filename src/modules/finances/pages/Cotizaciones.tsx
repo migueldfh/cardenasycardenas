@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { sileo } from "sileo";
+import { TablePagination } from "@/components/ui/TablePagination";
 import {
   Plus,
   Share2,
@@ -24,6 +25,7 @@ import {
   ExternalLink,
   Play,
   ArrowRight,
+  X,
 } from "lucide-react";
 
 export function Cotizaciones() {
@@ -36,6 +38,9 @@ export function Cotizaciones() {
   const updateStageMutation = useUpdateProjectStage();
 
   const [search, setSearch] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("all");
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [itemsPerPage, setItemsPerPage] = React.useState(10);
   const [isQuoteOpen, setIsQuoteOpen] = React.useState(false);
   const [quoteForm, setQuoteForm] = React.useState({
     client_id: "",
@@ -47,16 +52,30 @@ export function Cotizaciones() {
     description: "",
   });
 
-  // Filter quotes (status draft or pending_approval, or all)
+  // Filter quotes
   const quotes = React.useMemo(() => {
     return projects.filter((p) => {
+      const q = search.toLowerCase().trim();
       const matchesSearch =
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        (p.client?.name && p.client.name.toLowerCase().includes(search.toLowerCase()));
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        (p.order_number && p.order_number.toLowerCase().includes(q)) ||
+        (p.client?.name && p.client.name.toLowerCase().includes(q));
 
-      return matchesSearch;
+      const matchesStatus =
+        statusFilter === "all" || p.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
     });
-  }, [projects, search]);
+  }, [projects, search, statusFilter]);
+
+  const totalPages = Math.ceil(quotes.length / itemsPerPage);
+  const paginatedQuotes = React.useMemo(() => {
+    return quotes.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+  }, [quotes, currentPage, itemsPerPage]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(val);
@@ -142,15 +161,53 @@ export function Cotizaciones() {
 
       {/* Main Table */}
       <Card className="bg-card border-border shadow-sm">
-        <CardHeader className="pb-3 border-b">
-          <div className="relative max-w-sm">
+        <CardHeader className="pb-3 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar cotización..."
+              placeholder="Buscar por cotización, folio o cliente..."
               className="pl-9 h-9 text-xs"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <Select
+              value={statusFilter}
+              onValueChange={(val) => {
+                setStatusFilter(val);
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="w-[180px] h-9 text-xs">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                <SelectItem value="draft">Borrador</SelectItem>
+                <SelectItem value="pending_approval">Pendiente de Aprobación</SelectItem>
+                <SelectItem value="approved">Aprobado</SelectItem>
+                <SelectItem value="completed">Completado</SelectItem>
+              </SelectContent>
+            </Select>
+            {(search || statusFilter !== "all") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("all");
+                  setCurrentPage(1);
+                }}
+                className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Limpiar
+              </Button>
+            )}
           </div>
         </CardHeader>
 
@@ -160,7 +217,8 @@ export function Cotizaciones() {
               No hay cotizaciones registradas.
             </div>
           ) : (
-            <div className="overflow-x-auto border border-border rounded-xl">
+            <>
+              <div className="overflow-x-auto border border-border rounded-xl">
               <table className="w-full text-xs text-left">
                 <thead className="bg-muted text-muted-foreground font-semibold uppercase">
                   <tr>
@@ -172,7 +230,7 @@ export function Cotizaciones() {
                   </tr>
                 </thead>
                 <tbody>
-                  {quotes.map((q) => {
+                  {paginatedQuotes.map((q) => {
                     const price = q.custom_price_total || q.base_price_total || 0;
                     const isPending = q.status === "pending_approval" || q.status === "draft";
 
@@ -236,7 +294,16 @@ export function Cotizaciones() {
                 </tbody>
               </table>
             </div>
-          )}
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={quotes.length}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={setItemsPerPage}
+            />
+          </>
+        )}
         </CardContent>
       </Card>
 

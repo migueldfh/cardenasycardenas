@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import type { UserRole } from "@/types/models";
 import {
@@ -25,6 +26,7 @@ export function Users() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Form State
@@ -72,17 +74,21 @@ export function Users() {
   };
 
   const filteredUsers = users?.filter((user) => {
-    const searchLower = searchQuery.toLowerCase();
+    const searchLower = searchQuery.toLowerCase().trim();
     const fullName = user.full_name || "";
     const email = user.email || "";
     const department = user.department || "";
-    const role = user.role || "";
-    return (
+    const userRole = user.role || "";
+    const matchesSearch =
+      !searchLower ||
       fullName.toLowerCase().includes(searchLower) ||
       email.toLowerCase().includes(searchLower) ||
       department.toLowerCase().includes(searchLower) ||
-      role.toLowerCase().includes(searchLower)
-    );
+      userRole.toLowerCase().includes(searchLower);
+
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+
+    return matchesSearch && matchesRole;
   });
 
   if (profile?.role !== "admin") {
@@ -113,7 +119,7 @@ export function Users() {
       </div>
 
       {/* Filter and Search */}
-      <div className="flex items-center space-x-2">
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -122,6 +128,33 @@ export function Users() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 bg-card border-border text-foreground"
           />
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Rol de acceso" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los roles</SelectItem>
+              <SelectItem value="admin">Administrador</SelectItem>
+              <SelectItem value="project_manager">Gestor de Proyectos</SelectItem>
+              <SelectItem value="operator">Operador</SelectItem>
+            </SelectContent>
+          </Select>
+          {(searchQuery || roleFilter !== "all") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearchQuery("");
+                setRoleFilter("all");
+              }}
+              className="h-10 px-2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Limpiar
+            </Button>
+          )}
         </div>
       </div>
 

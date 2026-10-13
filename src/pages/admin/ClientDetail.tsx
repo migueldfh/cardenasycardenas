@@ -21,6 +21,7 @@ import {
   TrendingUp,
   FileText,
   Pencil,
+  Search,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,6 +91,9 @@ export function ClientDetail() {
   const [selectedProjectIdToLink, setSelectedProjectIdToLink] = React.useState("");
   const [productToDetach, setProductToDetach] = React.useState<{ id: string; partNumber: string } | null>(null);
   const [projectToDetach, setProjectToDetach] = React.useState<{ id: string; name: string } | null>(null);
+  const [searchAttachedTerm, setSearchAttachedTerm] = React.useState("");
+  const [searchProjectTerm, setSearchProjectTerm] = React.useState("");
+  const [projectStatusFilter, setProjectStatusFilter] = React.useState("all");
 
   const [isEditOpen, setIsEditOpen] = React.useState(false);
   const [editForm, setEditForm] = React.useState({
@@ -258,6 +262,28 @@ export function ClientDetail() {
     if (!client) return [];
     return projects.filter((p) => p.client_id !== client.id);
   }, [projects, client?.id]);
+
+  const filteredAttachedProducts = React.useMemo(() => {
+    if (!searchAttachedTerm.trim()) return attachedProducts;
+    const term = searchAttachedTerm.toLowerCase();
+    return attachedProducts.filter(
+      (p) =>
+        p.part_number.toLowerCase().includes(term) ||
+        (p.description || "").toLowerCase().includes(term)
+    );
+  }, [attachedProducts, searchAttachedTerm]);
+
+  const filteredClientProjects = React.useMemo(() => {
+    return clientProjects.filter((p) => {
+      const term = searchProjectTerm.toLowerCase();
+      const matchesSearch =
+        (p.name || "").toLowerCase().includes(term) ||
+        (p.order_number || "").toLowerCase().includes(term);
+      if (!matchesSearch) return false;
+      if (projectStatusFilter !== "all" && p.status !== projectStatusFilter) return false;
+      return true;
+    });
+  }, [clientProjects, searchProjectTerm, projectStatusFilter]);
 
   const clientProjectsMetrics = React.useMemo(() => {
     let totalInvoiced = 0;
@@ -575,9 +601,32 @@ export function ClientDetail() {
 
           {/* Linked Products list */}
           <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle className="text-base font-bold">Catálogo Vinculado</CardTitle>
-              <CardDescription>Productos que forman parte del inventario exclusivo de este cliente.</CardDescription>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
+              <div>
+                <CardTitle className="text-base font-bold">Catálogo Vinculado</CardTitle>
+                <CardDescription>Productos que forman parte del inventario exclusivo de este cliente ({attachedProducts.length}).</CardDescription>
+              </div>
+              {attachedProducts.length > 0 && (
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar producto vinculado..."
+                    value={searchAttachedTerm}
+                    onChange={(e) => setSearchAttachedTerm(e.target.value)}
+                    className="h-8 pl-8 pr-7 text-xs"
+                  />
+                  {searchAttachedTerm && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground hover:text-foreground"
+                      onClick={() => setSearchAttachedTerm("")}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {loadingAttached ? (
@@ -590,9 +639,21 @@ export function ClientDetail() {
                   <p className="font-semibold text-sm">Sin productos vinculados</p>
                   <p className="text-xs mt-1 max-w-[280px]">Utiliza el formulario de la izquierda para vincular artículos a este cliente.</p>
                 </div>
+              ) : filteredAttachedProducts.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg p-6 bg-muted/10">
+                  <p className="text-sm">No se encontraron productos que coincidan con "{searchAttachedTerm}".</p>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="text-xs mt-1 text-primary"
+                    onClick={() => setSearchAttachedTerm("")}
+                  >
+                    Limpiar búsqueda
+                  </Button>
+                </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {attachedProducts.map((product) => (
+                  {filteredAttachedProducts.map((product) => (
                     <div
                       key={product.id}
                       className="flex items-center justify-between p-3 rounded-lg border bg-muted/10 hover:bg-muted/20 transition-colors"
@@ -661,9 +722,46 @@ export function ClientDetail() {
 
           {/* Linked projects list */}
           <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle className="text-base font-bold">Proyectos Registrados</CardTitle>
-              <CardDescription>Presupuestos y órdenes de venta asociadas a {client.name}.</CardDescription>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
+              <div>
+                <CardTitle className="text-base font-bold">Proyectos Registrados</CardTitle>
+                <CardDescription>Presupuestos y órdenes de venta asociadas a {client.name} ({clientProjects.length}).</CardDescription>
+              </div>
+              {clientProjects.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative w-full sm:w-48">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar proyecto..."
+                      value={searchProjectTerm}
+                      onChange={(e) => setSearchProjectTerm(e.target.value)}
+                      className="h-8 pl-8 pr-7 text-xs"
+                    />
+                    {searchProjectTerm && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground hover:text-foreground"
+                        onClick={() => setSearchProjectTerm("")}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                  <select
+                    value={projectStatusFilter}
+                    onChange={(e) => setProjectStatusFilter(e.target.value)}
+                    className="h-8 rounded-md border border-input bg-background text-foreground px-2 py-1 text-xs"
+                  >
+                    <option value="all">Todos los estados</option>
+                    <option value="draft">Borrador</option>
+                    <option value="pending_approval">Pendiente</option>
+                    <option value="approved">Aprobado</option>
+                    <option value="completed">Completado</option>
+                    <option value="cancelled">Cancelado</option>
+                  </select>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {loadingProjects ? (
@@ -676,9 +774,24 @@ export function ClientDetail() {
                   <p className="font-semibold text-sm">Sin proyectos asociados</p>
                   <p className="text-xs mt-1 max-w-[280px]">Vincula cotizaciones del listado izquierdo para asociarlas a la facturación de este cliente.</p>
                 </div>
+              ) : filteredClientProjects.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg p-6 bg-muted/10">
+                  <p className="text-sm">No se encontraron proyectos con los filtros seleccionados.</p>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="text-xs mt-1 text-primary"
+                    onClick={() => {
+                      setSearchProjectTerm("");
+                      setProjectStatusFilter("all");
+                    }}
+                  >
+                    Restablecer filtros
+                  </Button>
+                </div>
               ) : (
                 <div className="space-y-3">
-                  {clientProjects.map((p) => {
+                  {filteredClientProjects.map((p) => {
                     const subtotal = Number(p.custom_price_total);
                     const effectiveTotal = p.requires_invoice
                       ? subtotal + (subtotal * (p.iva_rate ?? 0.16)) - (subtotal * ((p.isr_retention_rate ?? 0) + (p.iva_retention_rate ?? 0)))

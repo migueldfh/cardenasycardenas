@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sileo } from "sileo";
-import { Plus, Check, Search, UserPlus, Trash2, FileText, ExternalLink, Paperclip, Loader2, Pencil } from "lucide-react";
+import { Plus, Check, Search, UserPlus, Trash2, FileText, ExternalLink, Paperclip, Loader2, Pencil, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +52,7 @@ export function Gastos() {
   // State
   const [expenseSearch, setExpenseSearch] = React.useState("");
   const [selectedCategory, setSelectedCategory] = React.useState("all");
+  const [selectedStatus, setSelectedStatus] = React.useState("all");
   const [isExpenseOpen, setIsExpenseOpen] = React.useState(false);
   const [isSupplierOpen, setIsSupplierOpen] = React.useState(false);
   const [expenseToDelete, setExpenseToDelete] = React.useState<{ id: string; concept: string } | null>(null);
@@ -318,12 +319,18 @@ export function Gastos() {
   };
 
   const filteredExpenses = expenses.filter((e) => {
-    const matchesSearch = e.concept.toLowerCase().includes(expenseSearch.toLowerCase()) ||
-      (e.supplier?.legal_name || "").toLowerCase().includes(expenseSearch.toLowerCase());
+    const q = expenseSearch.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      e.concept.toLowerCase().includes(q) ||
+      (e.supplier?.legal_name || "").toLowerCase().includes(q) ||
+      (e.project?.name || "").toLowerCase().includes(q) ||
+      (e.amount && String(e.amount).includes(q));
 
     const matchesCategory = selectedCategory === "all" || e.category_id === selectedCategory;
+    const matchesStatus = selectedStatus === "all" || e.status === selectedStatus;
 
-    return matchesSearch && matchesCategory;
+    return matchesSearch && matchesCategory && matchesStatus;
   });
 
   // Pagination State
@@ -332,7 +339,7 @@ export function Gastos() {
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [expenseSearch, selectedCategory]);
+  }, [expenseSearch, selectedCategory, selectedStatus]);
 
   const totalPages = Math.ceil(filteredExpenses.length / itemsPerPage);
   const paginatedExpenses = React.useMemo(() => {
@@ -378,10 +385,10 @@ export function Gastos() {
       <Card>
         <CardContent className="pt-6 flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="flex flex-1 gap-4 w-full">
-            <div className="relative flex-1 max-w-xs">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por concepto o proveedor..."
+                placeholder="Buscar por concepto, proveedor o proyecto..."
                 value={expenseSearch}
                 onChange={(e) => setExpenseSearch(e.target.value)}
                 className="pl-9"
@@ -403,6 +410,33 @@ export function Gastos() {
                  ))}
               </SelectContent>
             </Select>
+
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                <SelectItem value="paid">Pagados</SelectItem>
+                <SelectItem value="pending">Pendientes</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {(expenseSearch || selectedCategory !== "all" || selectedStatus !== "all") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setExpenseSearch("");
+                  setSelectedCategory("all");
+                  setSelectedStatus("all");
+                }}
+                className="h-10 px-2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Limpiar
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

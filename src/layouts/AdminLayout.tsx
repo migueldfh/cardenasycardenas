@@ -27,8 +27,13 @@ export function AdminLayout() {
       users: "Usuarios",
       settings: "Configuración",
       line: "Línea de Producción",
-      tracking: "Seguimiento de Órdenes",
+      tracking: "Seguimiento en Vivo",
       history: "Historial de Producción",
+      projects: "Proyectos & Procesos",
+      clients: "Clientes",
+      providers: "Proveedores",
+      finances: "Finanzas",
+      inventory: "Inventario",
     }
     
     if (map[segment]) {

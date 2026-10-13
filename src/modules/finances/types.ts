@@ -9,6 +9,7 @@ export interface IFinanceClient {
   fiscal_regime?: string | null;
   token: string;
   created_at: string;
+  updated_at?: string;
 }
 
 export type DecretoProcessStage =
@@ -124,6 +125,10 @@ export interface IProject {
   sizes_breakdown?: ISizesBreakdown;
   roster_list?: IRosterEntry[];
   cut_order_data?: ICutOrderData;
+  unit_cost?: number | null;
+  total_pieces?: number;
+  print_info?: string | null;
+  status_note?: string | null;
 }
 
 export interface IInvoice {
@@ -210,6 +215,7 @@ export interface IExpense {
   remissions?: IExpenseRemission[];
   is_factura?: boolean;
   iva_amount?: number;
+  invoice_file_url?: string | null;
 }
 
 export interface IFinancialStats {

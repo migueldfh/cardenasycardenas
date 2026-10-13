@@ -21,6 +21,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TablePagination } from "@/components/ui/TablePagination";
 import {
   Plus,
   Search,
@@ -32,6 +34,7 @@ import {
   Users,
   Check,
   Loader2,
+  X,
 } from "lucide-react";
 import { sileo } from "sileo";
 
@@ -180,9 +183,39 @@ export function Clients() {
     navigate(`/clients/${client.id}`);
   };
 
-  const filteredClients = clients.filter((c) =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const [filterType, setFilterType] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const filteredClients = React.useMemo(() => {
+    return clients.filter((c) => {
+      const q = searchTerm.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        c.name.toLowerCase().includes(q) ||
+        (c.trade_name && c.trade_name.toLowerCase().includes(q)) ||
+        (c.fiscal_name && c.fiscal_name.toLowerCase().includes(q)) ||
+        (c.tax_id_rfc && c.tax_id_rfc.toLowerCase().includes(q)) ||
+        (c.email && c.email.toLowerCase().includes(q)) ||
+        (c.phone && c.phone.toLowerCase().includes(q));
+
+      const matchesFilter =
+        filterType === "all" ||
+        (filterType === "with_rfc" && Boolean(c.tax_id_rfc)) ||
+        (filterType === "without_rfc" && !c.tax_id_rfc) ||
+        (filterType === "with_products" && (c.product_count ?? 0) > 0);
+
+      return matchesSearch && matchesFilter;
+    });
+  }, [clients, searchTerm, filterType]);
+
+  const totalPages = Math.ceil(filteredClients.length / itemsPerPage);
+  const paginatedClients = React.useMemo(() => {
+    return filteredClients.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+  }, [filteredClients, currentPage, itemsPerPage]);
 
   return (
     <div className="space-y-6">
@@ -440,16 +473,55 @@ export function Clients() {
             Clientes
           </CardTitle>
           <CardDescription>
-            Mostrando {filteredClients.length} clientes. Los productos asociados son mostrados con sus niveles actuales en almacén.
+            Mostrando {filteredClients.length} de {clients.length} clientes registrados.
           </CardDescription>
-          <div className="relative w-full max-w-sm mt-4">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar cliente..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between mt-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nombre, comercial, RFC, email o teléfono..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Select
+                value={filterType}
+                onValueChange={(val) => {
+                  setFilterType(val);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filtro" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los clientes</SelectItem>
+                  <SelectItem value="with_rfc">Con RFC registrado</SelectItem>
+                  <SelectItem value="without_rfc">Sin RFC</SelectItem>
+                  <SelectItem value="with_products">Con productos</SelectItem>
+                </SelectContent>
+              </Select>
+              {(searchTerm || filterType !== "all") && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setFilterType("all");
+                    setCurrentPage(1);
+                  }}
+                  className="h-10 px-2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Limpiar
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -464,7 +536,8 @@ export function Clients() {
               <p className="text-xs text-muted-foreground mt-1">Crea un cliente para comenzar a asociar productos.</p>
             </div>
           ) : (
-            <div className="border rounded-md">
+            <>
+              <div className="border rounded-md">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -475,7 +548,7 @@ export function Clients() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredClients.map((client) => {
+                  {paginatedClients.map((client) => {
                     const shareUrl = `${window.location.origin}/client-stock/${client.token}`;
                     return (
                       <TableRow key={client.id} className="hover:bg-muted/50 transition-colors">
@@ -562,7 +635,16 @@ export function Clients() {
                 </TableBody>
               </Table>
             </div>
-          )}
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={filteredClients.length}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={setItemsPerPage}
+            />
+          </>
+        )}
         </CardContent>
       </Card>
     </div>

@@ -87,6 +87,7 @@ export interface IClient {
   fiscal_regime?: string | null;
   token: string;
   created_at: string;
+  updated_at?: string;
   product_count?: number;
   total_paid?: number;
   total_debt?: number;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { sileo } from "sileo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +21,9 @@ import {
   Plus, 
   QrCode, 
   Camera, 
-  Loader2 
+  Loader2,
+  Search,
+  X,
 } from "lucide-react";
 import { useInventory, useProducts, useCreateRawMaterial } from "../hooks";
 import { Html5Qrcode } from "html5-qrcode";
@@ -52,6 +54,28 @@ export function InventoryDashboard() {
   const [weight, setWeight] = useState("");
   const [batchNumber, setBatchNumber] = useState("");
   const [supplier, setSupplier] = useState("");
+
+  // Search states for dashboard lists
+  const [searchStockTerm, setSearchStockTerm] = useState("");
+  const [searchCatalogTerm, setSearchCatalogTerm] = useState("");
+
+  const filteredStock = useMemo(() => {
+    if (!totalStock) return [];
+    if (!searchStockTerm.trim()) return totalStock;
+    const term = searchStockTerm.toLowerCase().trim();
+    return totalStock.filter((item) => item.part_number.toLowerCase().includes(term));
+  }, [totalStock, searchStockTerm]);
+
+  const filteredProducts = useMemo(() => {
+    if (!products) return [];
+    if (!searchCatalogTerm.trim()) return products;
+    const term = searchCatalogTerm.toLowerCase().trim();
+    return products.filter((p) =>
+      p.part_number.toLowerCase().includes(term) ||
+      (p.description || "").toLowerCase().includes(term) ||
+      (p.raw_material?.material_type || "").toLowerCase().includes(term)
+    );
+  }, [products, searchCatalogTerm]);
 
   // Handle camera QR code scanner
   useEffect(() => {
@@ -201,8 +225,31 @@ export function InventoryDashboard() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle>Stock por Producto</CardTitle>
+          <CardHeader className="pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <CardTitle>Stock por Producto</CardTitle>
+              {totalStock && totalStock.length > 0 && (
+                <div className="relative w-full sm:w-48">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar SKU..."
+                    value={searchStockTerm}
+                    onChange={(e) => setSearchStockTerm(e.target.value)}
+                    className="h-8 pl-8 pr-7 text-xs"
+                  />
+                  {searchStockTerm && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground hover:text-foreground"
+                      onClick={() => setSearchStockTerm("")}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -212,21 +259,30 @@ export function InventoryDashboard() {
                 ))}
               </div>
             ) : totalStock && totalStock.length > 0 ? (
-              <div className="space-y-3">
-                {totalStock.map((item) => (
-                  <Link
-                    key={item.part_number}
-                    to={`/inventory/product/${item.part_number}`}
-                    className="flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted"
-                  >
-                    <span className="font-medium">{item.part_number}</span>
-                    <div className="flex items-center gap-4">
-                      <span className="text-muted-foreground">{item.occupied_slots} ubicaciones</span>
-                      <span className="font-semibold tabular-nums">{item.total_quantity} uds</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+              filteredStock.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground border border-dashed rounded-lg bg-muted/10 text-xs">
+                  <p>No se encontraron productos para "{searchStockTerm}".</p>
+                  <Button variant="link" size="sm" onClick={() => setSearchStockTerm("")} className="text-xs mt-1">
+                    Limpiar búsqueda
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                  {filteredStock.map((item) => (
+                    <Link
+                      key={item.part_number}
+                      to={`/inventory/product/${item.part_number}`}
+                      className="flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted"
+                    >
+                      <span className="font-medium font-mono text-xs">{item.part_number}</span>
+                      <div className="flex items-center gap-4 text-xs">
+                        <span className="text-muted-foreground">{item.occupied_slots} ubicaciones</span>
+                        <span className="font-semibold tabular-nums">{item.total_quantity} uds</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )
             ) : (
               <p className="text-sm text-muted-foreground">
                 No hay stock registrado.
@@ -236,8 +292,31 @@ export function InventoryDashboard() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Catálogo de Productos</CardTitle>
+          <CardHeader className="pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <CardTitle>Catálogo de Productos</CardTitle>
+              {products && products.length > 0 && (
+                <div className="relative w-full sm:w-48">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar producto..."
+                    value={searchCatalogTerm}
+                    onChange={(e) => setSearchCatalogTerm(e.target.value)}
+                    className="h-8 pl-8 pr-7 text-xs"
+                  />
+                  {searchCatalogTerm && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground hover:text-foreground"
+                      onClick={() => setSearchCatalogTerm("")}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {productsLoading ? (
@@ -247,32 +326,41 @@ export function InventoryDashboard() {
                 ))}
               </div>
             ) : products && products.length > 0 ? (
-              <div className="space-y-3">
-                {products.slice(0, 10).map((product) => (
-                  <Link
-                    key={product.id}
-                    to={`/inventory/product/${product.part_number}`}
-                    className="flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted"
-                  >
-                    <div className="flex flex-col">
-                      <span className="font-medium">{product.part_number}</span>
-                      {product.raw_material && (
-                        <span className="text-[10px] text-primary font-semibold">
-                          Materia Prima: {product.raw_material.material_type}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-muted-foreground truncate ml-4 max-w-[200px]">
-                      {product.description ?? "Sin descripción"}
-                    </span>
-                  </Link>
-                ))}
-                {products.length > 10 && (
-                  <p className="text-xs text-muted-foreground text-center pt-2">
-                    +{products.length - 10} productos más
-                  </p>
-                )}
-              </div>
+              filteredProducts.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground border border-dashed rounded-lg bg-muted/10 text-xs">
+                  <p>No se encontraron productos para "{searchCatalogTerm}".</p>
+                  <Button variant="link" size="sm" onClick={() => setSearchCatalogTerm("")} className="text-xs mt-1">
+                    Limpiar búsqueda
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                  {filteredProducts.slice(0, 15).map((product) => (
+                    <Link
+                      key={product.id}
+                      to={`/inventory/product/${product.part_number}`}
+                      className="flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted"
+                    >
+                      <div className="flex flex-col min-w-0 pr-2">
+                        <span className="font-medium font-mono text-xs">{product.part_number}</span>
+                        {product.raw_material && (
+                          <span className="text-[10px] text-primary font-semibold">
+                            Materia Prima: {product.raw_material.material_type}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-muted-foreground truncate text-xs max-w-[180px]">
+                        {product.description ?? "Sin descripción"}
+                      </span>
+                    </Link>
+                  ))}
+                  {filteredProducts.length > 15 && (
+                    <p className="text-xs text-muted-foreground text-center pt-2">
+                      +{filteredProducts.length - 15} productos más
+                    </p>
+                  )}
+                </div>
+              )
             ) : (
               <p className="text-sm text-muted-foreground">
                 No hay productos registrados en el catálogo.

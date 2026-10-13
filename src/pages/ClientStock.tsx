@@ -1,9 +1,12 @@
+import { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useClientStockByToken, useClientByToken, useClientProjectsByToken } from "@/modules/inventory/hooks";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Package,
   Warehouse,
@@ -15,7 +18,9 @@ import {
   DollarSign,
   CreditCard,
   Briefcase,
-  ExternalLink
+  ExternalLink,
+  Search,
+  X
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -33,6 +38,50 @@ export function ClientStock() {
   const { data: projects = [], isLoading: isProjectsLoading } = useClientProjectsByToken(!isInventoryActive ? (token || "") : "");
 
   const isLoading = isClientLoading || (isInventoryActive ? isStockLoading : isProjectsLoading);
+
+  // Stock Search & Filter State
+  const [stockSearchQuery, setStockSearchQuery] = useState("");
+  const [warehouseFilter, setWarehouseFilter] = useState("all");
+
+  const availableWarehouses = useMemo(() => {
+    const set = new Set<string>();
+    stockItems.forEach((item) => {
+      if (item.warehouse) set.add(item.warehouse);
+    });
+    return Array.from(set);
+  }, [stockItems]);
+
+  const filteredStockItems = useMemo(() => {
+    return stockItems.filter((item) => {
+      const q = stockSearchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        (item.part_number && item.part_number.toLowerCase().includes(q)) ||
+        (item.description && item.description.toLowerCase().includes(q));
+
+      const matchesWarehouse =
+        warehouseFilter === "all" || item.warehouse === warehouseFilter;
+
+      return matchesSearch && matchesWarehouse;
+    });
+  }, [stockItems, stockSearchQuery, warehouseFilter]);
+
+  // Projects Search & Filter State
+  const [projectSearchQuery, setProjectSearchQuery] = useState("");
+  const [projectStatusFilter, setProjectStatusFilter] = useState("all");
+
+  const filteredProjects = useMemo(() => {
+    return projects.filter((project) => {
+      const q = projectSearchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q || (project.name && project.name.toLowerCase().includes(q));
+
+      const matchesStatus =
+        projectStatusFilter === "all" || project.status === projectStatusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [projects, projectSearchQuery, projectStatusFilter]);
 
   // Format currency helper
   const formatCurrency = (val: number | undefined | null) => {
@@ -252,7 +301,48 @@ export function ClientStock() {
                 A continuación se listan todos tus productos y las cantidades disponibles en cada bodega.
               </CardDescription>
             </CardHeader>
-            <CardContent className={stockItems.length === 0 ? "p-6" : "p-0"}>
+            <CardContent className="p-4 space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por núm. de parte o descripción..."
+                    value={stockSearchQuery}
+                    onChange={(e) => setStockSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Bodega" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas las bodegas</SelectItem>
+                      {availableWarehouses.map((wh) => (
+                        <SelectItem key={wh} value={wh}>
+                          {getWarehouseLabel(wh)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {(stockSearchQuery || warehouseFilter !== "all") && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setStockSearchQuery("");
+                        setWarehouseFilter("all");
+                      }}
+                      className="h-10 px-2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Limpiar
+                    </Button>
+                  )}
+                </div>
+              </div>
+
               {stockItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Boxes className="h-12 w-12 text-muted-foreground/50 mb-3" />
@@ -261,8 +351,14 @@ export function ClientStock() {
                     Este cliente no tiene productos de inventario asociados en este momento.
                   </p>
                 </div>
+              ) : filteredStockItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No se encontraron productos con los filtros aplicados.
+                  </p>
+                </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30">
@@ -274,7 +370,7 @@ export function ClientStock() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {stockItems.map((item, index) => (
+                      {filteredStockItems.map((item, index) => (
                         <TableRow key={index} className="hover:bg-muted/10 transition-colors">
                           <TableCell className="font-bold py-4 pl-6 text-foreground">
                             {item.part_number}
@@ -320,7 +416,47 @@ export function ClientStock() {
                 A continuación se listan los presupuestos y órdenes de venta asociadas a tu cuenta.
               </CardDescription>
             </CardHeader>
-            <CardContent className={projects.length === 0 ? "p-6" : "p-0"}>
+            <CardContent className="p-4 space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nombre de proyecto..."
+                    value={projectSearchQuery}
+                    onChange={(e) => setProjectSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select value={projectStatusFilter} onValueChange={setProjectStatusFilter}>
+                    <SelectTrigger className="w-[190px]">
+                      <SelectValue placeholder="Estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los estados</SelectItem>
+                      <SelectItem value="draft">Borrador</SelectItem>
+                      <SelectItem value="pending_approval">Pendiente de aprobación</SelectItem>
+                      <SelectItem value="approved">Aprobado</SelectItem>
+                      <SelectItem value="completed">Completado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {(projectSearchQuery || projectStatusFilter !== "all") && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setProjectSearchQuery("");
+                        setProjectStatusFilter("all");
+                      }}
+                      className="h-10 px-2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Limpiar
+                    </Button>
+                  )}
+                </div>
+              </div>
+
               {projects.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Briefcase className="h-12 w-12 text-muted-foreground/50 mb-3" />
@@ -329,8 +465,14 @@ export function ClientStock() {
                     No hay proyectos ni cotizaciones vinculadas a tu cuenta en este momento.
                   </p>
                 </div>
+              ) : filteredProjects.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No se encontraron proyectos con los filtros aplicados.
+                  </p>
+                </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30">
@@ -342,7 +484,7 @@ export function ClientStock() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {projects.map((project) => (
+                      {filteredProjects.map((project) => (
                         <TableRow key={project.id} className="hover:bg-muted/10 transition-colors">
                           <TableCell className="font-bold py-4 pl-6 text-foreground">
                             {project.name}

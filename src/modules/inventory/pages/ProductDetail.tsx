@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Printer, QrCode, Edit3, AlertTriangle, Loader2 } from "lucide-react";
+import { ArrowLeft, Printer, QrCode, Edit3, AlertTriangle, Loader2, Search, X, Filter } from "lucide-react";
 import { useProductStock, useProductDetail, useUpdateProductOrRawMaterial } from "../hooks";
 import { QRCodeSVG } from "qrcode.react";
 import { sileo } from "sileo";
@@ -89,6 +89,31 @@ export function ProductDetail() {
         Math.max(...stockData.map((s) => new Date(s.updated_at).getTime()))
       ).toLocaleString("es-MX")
     : "—";
+
+  // Locations filter state
+  const [searchLocationTerm, setSearchLocationTerm] = useState("");
+  const [warehouseFilter, setWarehouseFilter] = useState("all");
+
+  const availableWarehouses = useMemo(() => {
+    if (!stockData) return [];
+    return Array.from(new Set(stockData.map((s) => s.warehouse))).filter(Boolean);
+  }, [stockData]);
+
+  const filteredStock = useMemo(() => {
+    if (!stockData) return [];
+    return stockData.filter((s) => {
+      const term = searchLocationTerm.toLowerCase().trim();
+      const matchesSearch =
+        !term ||
+        (s.warehouse || "").toLowerCase().includes(term) ||
+        (s.rack || "").toLowerCase().includes(term) ||
+        (s.section || "").toLowerCase().includes(term) ||
+        (s.level || "").toLowerCase().includes(term);
+      if (!matchesSearch) return false;
+      if (warehouseFilter !== "all" && s.warehouse !== warehouseFilter) return false;
+      return true;
+    });
+  }, [stockData, searchLocationTerm, warehouseFilter]);
 
   const qrUrl = `${window.location.origin}/inventory/product/${productId}`;
 
@@ -311,7 +336,71 @@ export function ProductDetail() {
       {/* STOCK LOCATIONS TABLE */}
       <Card>
         <CardHeader>
-          <CardTitle>Distribución por Ubicación</CardTitle>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <CardTitle>Distribución por Ubicación</CardTitle>
+              <CardDescription>
+                Racks y niveles asignados para este SKU {stockData?.length ? `(${filteredStock.length} de ${stockData.length} registros)` : ''}.
+              </CardDescription>
+            </div>
+
+            {stockData && stockData.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-full sm:w-56">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Filtrar por rack, sección o nivel..."
+                    value={searchLocationTerm}
+                    onChange={(e) => setSearchLocationTerm(e.target.value)}
+                    className="h-8 pl-8 pr-7 text-xs"
+                  />
+                  {searchLocationTerm && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground hover:text-foreground"
+                      onClick={() => setSearchLocationTerm("")}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+
+                {availableWarehouses.length > 1 && (
+                  <div className="flex items-center gap-1.5">
+                    <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                    <select
+                      value={warehouseFilter}
+                      onChange={(e) => setWarehouseFilter(e.target.value)}
+                      className="h-8 rounded-md border border-input bg-background px-2.5 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="all">Todos los almacenes</option>
+                      {availableWarehouses.map((wh) => (
+                        <option key={wh} value={wh}>
+                          {wh}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {(searchLocationTerm || warehouseFilter !== "all") && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSearchLocationTerm("");
+                      setWarehouseFilter("all");
+                    }}
+                    className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5 mr-1" />
+                    Limpiar
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -323,34 +412,51 @@ export function ProductDetail() {
           ) : isError ? (
             <p className="text-sm text-destructive">Error al cargar la distribución.</p>
           ) : stockData && stockData.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-muted-foreground font-medium">
-                    <th className="text-left py-2 px-3">Almacén</th>
-                    <th className="text-left py-2 px-3">Rack</th>
-                    <th className="text-left py-2 px-3">Sección</th>
-                    <th className="text-left py-2 px-3">Nivel</th>
-                    <th className="text-right py-2 px-3">Cantidad</th>
-                    <th className="text-right py-2 px-3">Actualizado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stockData.map((row, i) => (
-                    <tr key={i} className="border-b border-border/50 hover:bg-muted/30">
-                      <td className="py-2 px-3 font-medium">{row.warehouse}</td>
-                      <td className="py-2 px-3">{row.rack ?? "—"}</td>
-                      <td className="py-2 px-3">{row.section ?? "—"}</td>
-                      <td className="py-2 px-3">{row.level ?? "—"}</td>
-                      <td className="py-2 px-3 text-right tabular-nums font-semibold">{row.quantity}</td>
-                      <td className="py-2 px-3 text-right text-muted-foreground">
-                        {new Date(row.updated_at).toLocaleDateString("es-MX")}
-                      </td>
+            filteredStock.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg bg-muted/10">
+                <p className="text-sm">No se encontraron ubicaciones que coincidan con los filtros aplicados.</p>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="text-xs mt-1"
+                  onClick={() => {
+                    setSearchLocationTerm("");
+                    setWarehouseFilter("all");
+                  }}
+                >
+                  Restablecer filtros
+                </Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto border rounded-lg">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/40 text-muted-foreground font-medium">
+                      <th className="text-left py-2.5 px-3.5">Almacén</th>
+                      <th className="text-left py-2.5 px-3.5">Rack</th>
+                      <th className="text-left py-2.5 px-3.5">Sección</th>
+                      <th className="text-left py-2.5 px-3.5">Nivel</th>
+                      <th className="text-right py-2.5 px-3.5">Cantidad</th>
+                      <th className="text-right py-2.5 px-3.5">Actualizado</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredStock.map((row, i) => (
+                      <tr key={i} className="hover:bg-muted/30 transition-colors">
+                        <td className="py-2.5 px-3.5 font-medium">{row.warehouse}</td>
+                        <td className="py-2.5 px-3.5">{row.rack ?? "—"}</td>
+                        <td className="py-2.5 px-3.5 text-muted-foreground">{row.section ?? "—"}</td>
+                        <td className="py-2.5 px-3.5 text-muted-foreground">{row.level ?? "—"}</td>
+                        <td className="py-2.5 px-3.5 text-right tabular-nums font-semibold">{row.quantity}</td>
+                        <td className="py-2.5 px-3.5 text-right text-muted-foreground text-xs">
+                          {new Date(row.updated_at).toLocaleDateString("es-MX")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
           ) : (
             <p className="text-sm text-muted-foreground">
               No hay stock registrado para este producto.
