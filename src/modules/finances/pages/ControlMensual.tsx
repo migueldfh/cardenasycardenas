@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -42,6 +44,8 @@ import {
   ChevronLeft,
   Plus,
   Edit,
+  SlidersHorizontal,
+  Columns,
 } from "lucide-react";
 
 interface ClientObligationRow {
@@ -259,10 +263,12 @@ const mockClientsObligations: ClientObligationRow[] = [
 ];
 
 export function ControlMensual() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedContador, setSelectedContador] = useState("all");
   const [selectedEstatus, setSelectedEstatus] = useState("all");
   const [selectedRegimen, setSelectedRegimen] = useState("all");
+  const [selectedPersona, setSelectedPersona] = useState("all");
   const [selectedClient, setSelectedClient] = useState<ClientObligationRow | null>(null);
 
   const displayRows = mockClientsObligations.filter((c) => {
@@ -276,6 +282,7 @@ export function ControlMensual() {
     if (selectedContador !== "all" && c.contador !== selectedContador) return false;
     if (selectedEstatus !== "all" && c.estatus !== selectedEstatus) return false;
     if (selectedRegimen !== "all" && c.regimen !== selectedRegimen) return false;
+    if (selectedPersona !== "all" && c.persona !== selectedPersona) return false;
     return true;
   });
 
@@ -354,9 +361,7 @@ export function ControlMensual() {
             </div>
           </div>
           <div className="mt-2">
-            <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
-              <div className="bg-emerald-500 h-full w-[76%]" />
-            </div>
+            <Progress value={76} indicatorClassName="bg-emerald-500" className="h-1.5" />
             <p className="text-[10px] text-emerald-600 font-medium mt-0.5">76% del total</p>
           </div>
         </Card>
@@ -372,9 +377,7 @@ export function ControlMensual() {
             </div>
           </div>
           <div className="mt-2">
-            <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
-              <div className="bg-blue-500 h-full w-[17%]" />
-            </div>
+            <Progress value={17} indicatorClassName="bg-blue-500" className="h-1.5" />
             <p className="text-[10px] text-blue-600 font-medium mt-0.5">17% del total</p>
           </div>
         </Card>
@@ -390,9 +393,7 @@ export function ControlMensual() {
             </div>
           </div>
           <div className="mt-2">
-            <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
-              <div className="bg-amber-500 h-full w-[4%]" />
-            </div>
+            <Progress value={4} indicatorClassName="bg-amber-500" className="h-1.5" />
             <p className="text-[10px] text-amber-600 font-medium mt-0.5">4% del total</p>
           </div>
         </Card>
@@ -408,9 +409,7 @@ export function ControlMensual() {
             </div>
           </div>
           <div className="mt-2">
-            <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
-              <div className="bg-rose-500 h-full w-[3%]" />
-            </div>
+            <Progress value={3} indicatorClassName="bg-rose-500" className="h-1.5" />
             <p className="text-[10px] text-rose-600 font-medium mt-0.5">3% del total</p>
           </div>
         </Card>
@@ -444,6 +443,31 @@ export function ControlMensual() {
           </SelectContent>
         </Select>
 
+        <Select defaultValue="all">
+          <SelectTrigger className="w-[130px] h-8 text-xs bg-muted/20">
+            <span className="text-muted-foreground mr-1">Cliente:</span>
+            <SelectValue placeholder="Todos" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="solupatch">Solupatch</SelectItem>
+            <SelectItem value="norte">Comercial del Norte</SelectItem>
+            <SelectItem value="industrial">Grupo Industrial</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={selectedPersona} onValueChange={setSelectedPersona}>
+          <SelectTrigger className="w-[120px] h-8 text-xs bg-muted/20">
+            <span className="text-muted-foreground mr-1">Persona:</span>
+            <SelectValue placeholder="Todas" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            <SelectItem value="Moral">Moral</SelectItem>
+            <SelectItem value="Física">Física</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Select value={selectedRegimen} onValueChange={setSelectedRegimen}>
           <SelectTrigger className="w-[130px] h-8 text-xs bg-muted/20">
             <span className="text-muted-foreground mr-1">Régimen:</span>
@@ -472,6 +496,14 @@ export function ControlMensual() {
             <SelectItem value="Atrasado">Atrasado</SelectItem>
           </SelectContent>
         </Select>
+
+        <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 ml-auto">
+          <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+          <span>Más filtros</span>
+          <Badge className="h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-blue-600 text-white rounded-full">
+            1
+          </Badge>
+        </Button>
       </div>
 
       {/* Main Table Card (Image 2) */}
@@ -483,7 +515,16 @@ export function ControlMensual() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-48 sm:w-64">
+            <Button variant="outline" size="sm" className="h-8 text-xs">
+              <Download className="mr-1 h-3 w-3" /> Exportar
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs">
+              <Upload className="mr-1 h-3 w-3" /> Importar
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs">
+              <Columns className="mr-1 h-3 w-3" /> Columnas
+            </Button>
+            <div className="relative w-48 sm:w-56">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Buscar en la tabla..."
@@ -492,12 +533,6 @@ export function ControlMensual() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button variant="outline" size="sm" className="h-8 text-xs">
-              <Download className="mr-1 h-3 w-3" /> Exportar
-            </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs">
-              <Upload className="mr-1 h-3 w-3" /> Importar
-            </Button>
           </div>
         </div>
 
@@ -535,7 +570,16 @@ export function ControlMensual() {
                     <Checkbox className="h-3.5 w-3.5" />
                   </TableCell>
                   <TableCell className="font-semibold text-foreground">
-                    <div>{row.name}</div>
+                    <div
+                      className="hover:underline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/control-mensual/${row.id}`);
+                      }}
+                    >
+                      <div className="text-xs leading-tight">{row.name.split(" ")[0]}</div>
+                      <div className="text-[10px] text-muted-foreground font-normal">{row.name}</div>
+                    </div>
                   </TableCell>
                   <TableCell className="font-mono text-muted-foreground text-[11px]">
                     {row.rfc}
@@ -556,18 +600,17 @@ export function ControlMensual() {
                   <TableCell className="text-center min-w-[70px]">
                     <div className="flex flex-col items-center">
                       <span className="text-[10px] font-medium text-foreground">{row.captura}%</span>
-                      <div className="w-12 bg-muted rounded-full h-1 overflow-hidden mt-0.5">
-                        <div
-                          className={`h-full ${
-                            row.captura === 100
-                              ? "bg-emerald-500"
-                              : row.captura > 50
-                              ? "bg-blue-500"
-                              : "bg-muted-foreground"
-                          }`}
-                          style={{ width: `${row.captura}%` }}
-                        />
-                      </div>
+                      <Progress
+                        value={row.captura}
+                        indicatorClassName={
+                          row.captura === 100
+                            ? "bg-emerald-500"
+                            : row.captura > 50
+                            ? "bg-blue-500"
+                            : "bg-muted-foreground"
+                        }
+                        className="w-12 h-1 mt-0.5"
+                      />
                     </div>
                   </TableCell>
                   <TableCell className="text-center">

@@ -1,9 +1,12 @@
 import React, { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -45,6 +48,7 @@ import {
   BarChart3,
   ChevronLeft,
   ChevronRight,
+  ArrowRight,
 } from "lucide-react";
 import { sileo } from "sileo";
 
@@ -484,7 +488,10 @@ export function Clients() {
               <p className="text-[11px] text-muted-foreground font-medium">Clientes activos</p>
             </div>
           </div>
-          <p className="mt-2 text-[11px] text-emerald-600 font-medium">85% del total</p>
+          <div className="mt-2">
+            <Progress value={85} indicatorClassName="bg-emerald-500" className="h-1.5" />
+            <p className="text-[11px] text-emerald-600 font-medium mt-1">85% del total</p>
+          </div>
         </Card>
 
         <Card className="bg-card shadow-xs border-border/80 p-4 flex flex-col justify-between">
@@ -497,7 +504,10 @@ export function Clients() {
               <p className="text-[11px] text-muted-foreground font-medium">Clientes inactivos</p>
             </div>
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground font-medium">10% del total</p>
+          <div className="mt-2">
+            <Progress value={10} indicatorClassName="bg-blue-500" className="h-1.5" />
+            <p className="text-[11px] text-muted-foreground font-medium mt-1">10% del total</p>
+          </div>
         </Card>
 
         <Card className="bg-card shadow-xs border-border/80 p-4 flex flex-col justify-between">
@@ -510,7 +520,10 @@ export function Clients() {
               <p className="text-[11px] text-muted-foreground font-medium">Prospectos</p>
             </div>
           </div>
-          <p className="mt-2 text-[11px] text-rose-600 font-medium">5% del total</p>
+          <div className="mt-2">
+            <Progress value={5} indicatorClassName="bg-rose-500" className="h-1.5" />
+            <p className="text-[11px] text-rose-600 font-medium mt-1">5% del total</p>
+          </div>
         </Card>
       </div>
 
@@ -899,14 +912,35 @@ export function Clients() {
                         <p className="text-muted-foreground leading-relaxed italic">
                           "{selectedClient.notes}"
                         </p>
-                        <div className="flex items-center justify-between pt-1 border-t border-border/50 text-[10px] text-muted-foreground">
-                          <span className="font-medium text-foreground">Por {selectedClient.notesAuthor}</span>
+                        <div className="flex items-center justify-between pt-2 border-t border-border/50 text-[10px] text-muted-foreground">
+                          <div className="flex items-center gap-1.5">
+                            <Avatar className="h-5 w-5">
+                              <AvatarFallback className="bg-slate-700 text-white text-[9px] font-bold">
+                                {selectedClient.notesAuthor.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium text-foreground">Por {selectedClient.notesAuthor}</span>
+                          </div>
                           <span>{selectedClient.notesDate}</span>
                         </div>
                       </div>
                     </div>
                   </TabsContent>
                 </Tabs>
+              </div>
+
+              {/* Card Footer Link */}
+              <div className="p-3 bg-muted/20 border-t border-border/60">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs text-primary font-semibold flex items-center justify-center gap-1.5"
+                  asChild
+                >
+                  <Link to={`/control-mensual/${selectedClient.id}`}>
+                    Ver expediente completo <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
               </div>
             </Card>
           </div>

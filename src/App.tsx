@@ -15,6 +15,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 // Finances & Operations Pages (Cárdenas & Cárdenas)
 import { FinancesDashboard } from './modules/finances/pages/FinancesDashboard';
 import { ControlMensual } from './modules/finances/pages/ControlMensual';
+import { ControlMensualDetail } from './modules/finances/pages/ControlMensualDetail';
 import { Contabilidades } from './modules/finances/pages/Contabilidades';
 import { OpinionesCumplimiento } from './modules/finances/pages/OpinionesCumplimiento';
 import { PendientesFiscales } from './modules/finances/pages/PendientesFiscales';
@@ -65,6 +66,7 @@ function App() {
                 
                 {/* 2. Operaciones */}
                 <Route path="control-mensual" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><ControlMensual /></ProtectedRoute>} />
+                <Route path="control-mensual/:id" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><ControlMensualDetail /></ProtectedRoute>} />
                 <Route path="contabilidades" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><Contabilidades /></ProtectedRoute>} />
                 <Route path="opiniones" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><OpinionesCumplimiento /></ProtectedRoute>} />
                 <Route path="pendientes" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><PendientesFiscales /></ProtectedRoute>} />

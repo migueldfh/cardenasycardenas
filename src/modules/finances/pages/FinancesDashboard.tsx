@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -175,9 +176,7 @@ export function FinancesDashboard() {
             </div>
           </div>
           <div className="mt-2.5">
-            <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
-              <div className="bg-emerald-500 h-full w-[76%]" />
-            </div>
+            <Progress value={76} indicatorClassName="bg-emerald-500" className="h-1.5" />
             <p className="text-[11px] text-emerald-600 font-medium mt-1">76% <span className="text-muted-foreground font-normal">del total</span></p>
           </div>
         </Card>
@@ -194,9 +193,7 @@ export function FinancesDashboard() {
             </div>
           </div>
           <div className="mt-2.5">
-            <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
-              <div className="bg-blue-500 h-full w-[17%]" />
-            </div>
+            <Progress value={17} indicatorClassName="bg-blue-500" className="h-1.5" />
             <p className="text-[11px] text-blue-600 font-medium mt-1">17% <span className="text-muted-foreground font-normal">del total</span></p>
           </div>
         </Card>
@@ -213,9 +210,7 @@ export function FinancesDashboard() {
             </div>
           </div>
           <div className="mt-2.5">
-            <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
-              <div className="bg-amber-500 h-full w-[4%]" />
-            </div>
+            <Progress value={4} indicatorClassName="bg-amber-500" className="h-1.5" />
             <p className="text-[11px] text-amber-600 font-medium mt-1">4% <span className="text-muted-foreground font-normal">del total</span></p>
           </div>
         </Card>
@@ -232,9 +227,7 @@ export function FinancesDashboard() {
             </div>
           </div>
           <div className="mt-2.5">
-            <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
-              <div className="bg-rose-500 h-full w-[3%]" />
-            </div>
+            <Progress value={3} indicatorClassName="bg-rose-500" className="h-1.5" />
             <p className="text-[11px] text-rose-600 font-medium mt-1">3% <span className="text-muted-foreground font-normal">del total</span></p>
           </div>
         </Card>
@@ -383,25 +376,19 @@ export function FinancesDashboard() {
               <div>
                 <p className="text-lg font-bold text-foreground">158</p>
                 <p className="text-[10px] text-emerald-600 font-medium">Positivas</p>
-                <div className="w-full bg-muted rounded-full h-1 mt-1 overflow-hidden">
-                  <div className="bg-emerald-500 h-full w-[85%]" />
-                </div>
+                <Progress value={85} indicatorClassName="bg-emerald-500" className="h-1 mt-1" />
                 <span className="text-[9px] text-muted-foreground">85%</span>
               </div>
               <div>
                 <p className="text-lg font-bold text-foreground">12</p>
                 <p className="text-[10px] text-rose-600 font-medium">Negativas</p>
-                <div className="w-full bg-muted rounded-full h-1 mt-1 overflow-hidden">
-                  <div className="bg-rose-500 h-full w-[6%]" />
-                </div>
+                <Progress value={6} indicatorClassName="bg-rose-500" className="h-1 mt-1" />
                 <span className="text-[9px] text-muted-foreground">6%</span>
               </div>
               <div>
                 <p className="text-lg font-bold text-foreground">16</p>
                 <p className="text-[10px] text-amber-600 font-medium">Pendientes</p>
-                <div className="w-full bg-muted rounded-full h-1 mt-1 overflow-hidden">
-                  <div className="bg-amber-500 h-full w-[9%]" />
-                </div>
+                <Progress value={9} indicatorClassName="bg-amber-500" className="h-1 mt-1" />
                 <span className="text-[9px] text-muted-foreground">9%</span>
               </div>
             </div>

@@ -3,6 +3,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -266,9 +268,7 @@ export function Contadores() {
             </div>
           </div>
           <div className="mt-2">
-            <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
-              <div className="bg-emerald-500 h-full w-[76%]" />
-            </div>
+            <Progress value={76} indicatorClassName="bg-emerald-500" className="h-1.5" />
             <p className="text-[10px] text-emerald-600 font-medium mt-0.5">76% del total</p>
           </div>
         </Card>
@@ -284,9 +284,7 @@ export function Contadores() {
             </div>
           </div>
           <div className="mt-2">
-            <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
-              <div className="bg-blue-500 h-full w-[17%]" />
-            </div>
+            <Progress value={17} indicatorClassName="bg-blue-500" className="h-1.5" />
             <p className="text-[10px] text-blue-600 font-medium mt-0.5">17% del total</p>
           </div>
         </Card>
@@ -302,9 +300,7 @@ export function Contadores() {
             </div>
           </div>
           <div className="mt-2">
-            <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
-              <div className="bg-amber-500 h-full w-[4%]" />
-            </div>
+            <Progress value={4} indicatorClassName="bg-amber-500" className="h-1.5" />
             <p className="text-[10px] text-amber-600 font-medium mt-0.5">4% del total</p>
           </div>
         </Card>
@@ -320,9 +316,7 @@ export function Contadores() {
             </div>
           </div>
           <div className="mt-2">
-            <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
-              <div className="bg-rose-500 h-full w-[3%]" />
-            </div>
+            <Progress value={3} indicatorClassName="bg-rose-500" className="h-1.5" />
             <p className="text-[10px] text-rose-600 font-medium mt-0.5">3% del total</p>
           </div>
         </Card>
@@ -432,9 +426,11 @@ export function Contadores() {
                       >
                         <TableCell className="py-3">
                           <div className="flex items-center gap-2.5">
-                            <div className="h-8 w-8 rounded-full bg-[#1e3a5f] text-white flex items-center justify-center font-semibold text-xs shrink-0">
-                              {c.name.split(" ").map((n) => n[0]).join("")}
-                            </div>
+                            <Avatar className="h-8 w-8 shrink-0">
+                              <AvatarFallback className="bg-[#1e3a5f] text-white font-semibold text-xs">
+                                {c.name.split(" ").map((n) => n[0]).join("")}
+                              </AvatarFallback>
+                            </Avatar>
                             <div>
                               <p className="font-semibold text-foreground text-xs leading-tight">{c.name}</p>
                               <p className="text-[10px] text-muted-foreground">{c.email}</p>
@@ -461,18 +457,17 @@ export function Contadores() {
                             <span className="text-[11px] font-bold text-foreground w-8">
                               {c.complianceRate}%
                             </span>
-                            <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden">
-                              <div
-                                className={`h-full ${
-                                  c.complianceRate >= 80
-                                    ? "bg-emerald-500"
-                                    : c.complianceRate >= 70
-                                    ? "bg-blue-500"
-                                    : "bg-amber-500"
-                                }`}
-                                style={{ width: `${c.complianceRate}%` }}
-                              />
-                            </div>
+                            <Progress
+                              value={c.complianceRate}
+                              indicatorClassName={
+                                c.complianceRate >= 80
+                                  ? "bg-emerald-500"
+                                  : c.complianceRate >= 70
+                                  ? "bg-blue-500"
+                                  : "bg-amber-500"
+                              }
+                              className="flex-1 h-1.5"
+                            />
                           </div>
                         </TableCell>
                         <TableCell className="text-right py-3" onClick={(e) => e.stopPropagation()}>
@@ -528,9 +523,11 @@ export function Contadores() {
           <Card className="border-border/80 shadow-xs overflow-hidden">
             <div className="p-4 bg-muted/20 border-b border-border/60">
               <div className="flex items-start gap-3">
-                <div className="h-12 w-12 rounded-full bg-[#1e3a5f] text-white flex items-center justify-center font-bold text-base shrink-0">
-                  {selectedContador.name.split(" ").map((n) => n[0]).join("")}
-                </div>
+                <Avatar className="h-12 w-12 shrink-0">
+                  <AvatarFallback className="bg-[#1e3a5f] text-white font-bold text-base">
+                    {selectedContador.name.split(" ").map((n) => n[0]).join("")}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold text-foreground leading-tight">

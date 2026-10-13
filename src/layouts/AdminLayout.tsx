@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
  
 export function AdminLayout() {
   const location = useLocation()
@@ -134,9 +135,11 @@ export function AdminLayout() {
 
             {/* Avatar Pill */}
             <div className="flex items-center gap-2 pl-1 border-l border-border/60">
-              <div className="h-8 w-8 rounded-full bg-[#1e3a5f] text-white flex items-center justify-center text-xs font-semibold">
-                AD
-              </div>
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-[#1e3a5f] text-white text-xs font-semibold">
+                  AD
+                </AvatarFallback>
+              </Avatar>
             </div>
           </div>
         </header>
