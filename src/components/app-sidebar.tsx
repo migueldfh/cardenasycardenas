@@ -1,18 +1,14 @@
-import * as React from "react"
 import {
-  LayoutDashboard,
-  ClipboardList,
-  History,
-  Warehouse,
+  Home,
+  FileText,
   Users,
   DollarSign,
-  Truck,
-  Briefcase,
-  Layers,
-  Activity,
-  Settings as SettingsIcon,
   Receipt,
+  BarChart3,
+  Settings as SettingsIcon,
+  HelpCircle,
 } from "lucide-react"
+import { Link } from "react-router-dom"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -24,67 +20,51 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
+  SidebarMenuButton,
 } from "@/components/ui/sidebar"
-import { MODULES_CONFIG } from "@/config/modules"
-import { useAuth } from "@/hooks/useAuth"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { logoUrl } = useTheme()
-  const { profile } = useAuth()
-  const isProjectManager = profile?.role === "project_manager"
-  const isAdmin = profile?.role === "admin"
 
-  const mainItems = [
+  // Main navigation items matching Cárdenas & Cárdenas ERP design
+  const mainNavItems = [
     {
-      title: "Dashboard",
+      title: "Inicio",
       url: "/dashboard",
-      icon: LayoutDashboard,
-    },
-  ]
-
-  const processItems = [
-    {
-      title: "Proyectos & Procesos",
-      url: "/projects",
-      icon: Briefcase,
+      icon: Home,
     },
     {
-      title: "Línea de Producción",
-      url: "/line",
-      icon: Layers,
-    },
-    {
-      title: "Órdenes de Trabajo",
-      url: "/orders",
-      icon: ClipboardList,
+      title: "Operaciones",
+      url: "/control-mensual",
+      icon: FileText,
       items: [
         {
-          title: "Todas las Órdenes",
-          url: "/orders",
+          title: "Control mensual",
+          url: "/control-mensual",
         },
-        ...(isAdmin
-          ? [
-              {
-                title: "Nueva Orden",
-                url: "/orders/new",
-              },
-            ]
-          : []),
+        {
+          title: "Contabilidades",
+          url: "/contabilidades",
+        },
+        {
+          title: "Opiniones de cumplimiento",
+          url: "/opiniones",
+        },
+        {
+          title: "Pendientes",
+          url: "/pendientes",
+        },
+        {
+          title: "Calendario fiscal",
+          url: "/calendario-fiscal",
+        },
       ],
     },
     {
-      title: "Seguimiento en Vivo",
-      url: "/tracking",
-      icon: Activity,
+      title: "Clientes",
+      url: "/clients",
+      icon: Users,
     },
-    {
-      title: "Historial de Producción",
-      url: "/history",
-      icon: History,
-    },
-  ]
-
-  const financeItems = [
     {
       title: "Finanzas",
       url: "/finances",
@@ -95,19 +75,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           url: "/finances",
         },
         {
-          title: "Control Mensual",
-          url: "/finances/control-mensual",
-        },
-        {
-          title: "Cotizaciones",
-          url: "/finances/cotizaciones",
-        },
-        {
-          title: "Facturas",
-          url: "/finances/facturas",
-        },
-        {
-          title: "Ingresos (Ventas)",
+          title: "Ingresos (Cobranza)",
           url: "/finances/ingresos",
         },
         {
@@ -126,120 +94,80 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           title: "Conciliación Bancaria",
           url: "/finances/transferencias",
         },
-        {
-          title: "Reportes",
-          url: "/finances/reportes",
-        },
-        {
-          title: "Categorías",
-          url: "/finances/categorias",
-        },
-        {
-          title: "Métodos de Pago",
-          url: "/finances/metodos-pago",
-        },
-        ...(isAdmin
-          ? [
-              {
-                title: "Configuración",
-                url: "/finances/configuracion",
-              },
-            ]
-          : []),
       ],
     },
-  ]
-
-  const inventoryItems = [
     {
-      title: "Inventario de Almacén",
-      url: "/inventory",
-      icon: Warehouse,
+      title: "Facturación",
+      url: "/facturas",
+      icon: Receipt,
+    },
+    {
+      title: "Reportes",
+      url: "/reportes",
+      icon: BarChart3,
     },
   ]
 
-  const coreItems = isProjectManager
-    ? [
-        {
-          title: "Proyectos & Procesos",
-          url: "/projects",
-          icon: Briefcase,
-        },
-        {
-          title: "Línea de Producción",
-          url: "/line",
-          icon: Layers,
-        },
-        {
-          title: "Seguimiento",
-          url: "/tracking",
-          icon: Activity,
-        },
-        {
-          title: "Cotizaciones",
-          url: "/finances/cotizaciones",
-          icon: Receipt,
-        },
-        {
-          title: "Clientes",
-          url: "/clients",
-          icon: Users,
-        },
-      ]
-    : [
-        {
-          title: "Clientes",
-          url: "/clients",
-          icon: Users,
-        },
-        {
-          title: "Proveedores",
-          url: "/providers",
-          icon: Truck,
-        },
-        ...(isAdmin
-          ? [
-              {
-                title: "Usuarios",
-                url: "/users",
-                icon: Users,
-              },
-              {
-                title: "Configuración",
-                url: "/settings",
-                icon: SettingsIcon,
-              },
-            ]
-          : []),
-      ]
+  const adminNavItems = [
+    {
+      title: "Contadores / Usuarios",
+      url: "/users",
+      icon: Users,
+    },
+    {
+      title: "Configuración",
+      url: "/settings",
+      icon: SettingsIcon,
+    },
+  ]
 
   return (
-    <Sidebar variant="inset" {...props} className="bg-sidebar">
-      <SidebarHeader className="p-6 bg-sidebar">
+    <Sidebar variant="inset" {...props} className="bg-sidebar border-r border-border/80">
+      <SidebarHeader className="p-5 bg-sidebar border-b border-border/40">
         <SidebarMenu>
-          <SidebarMenuItem className="flex justify-center items-center">
-            <img src={logoUrl || "/logo.png"} alt="Logo" className="h-16 w-auto" />
+          <SidebarMenuItem className="flex items-center gap-3">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Cárdenas & Cárdenas" className="h-10 w-auto object-contain" />
+            ) : (
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-lg bg-[#1e3a5f] text-white flex items-center justify-center font-bold text-sm tracking-tighter shadow-xs">
+                  C&C
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-xs tracking-wider text-foreground leading-tight">
+                    CARDENAS
+                  </span>
+                  <span className="font-bold text-xs tracking-wider text-foreground leading-tight">
+                    & CARDENAS
+                  </span>
+                  <span className="text-[8px] text-muted-foreground uppercase font-medium tracking-tight">
+                    Consultoría Legal Fiscal Contable
+                  </span>
+                </div>
+              </div>
+            )}
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent className="bg-sidebar gap-0 py-2">
-        <NavMain items={mainItems} />
 
-        {!isProjectManager && MODULES_CONFIG.orders.enabled && (
-          <NavMain title="Manufactura & Procesos" items={processItems} />
-        )}
-
-        {!isProjectManager && MODULES_CONFIG.finances.enabled && (
-          <NavMain title="Finanzas & Cobros" items={financeItems} />
-        )}
-
-        {!isProjectManager && MODULES_CONFIG.inventory.enabled && (
-          <NavMain title="Logística" items={inventoryItems} />
-        )}
-
-        <NavMain title={isProjectManager ? "Gestión de Proyectos" : "Administración & Catálogos"} items={coreItems} />
+      <SidebarContent className="bg-sidebar gap-1 py-3 px-2">
+        <NavMain items={mainNavItems} />
+        <NavMain title="ADMINISTRACIÓN" items={adminNavItems} />
       </SidebarContent>
-      <SidebarFooter className="p-4 bg-sidebar">
+
+      <SidebarFooter className="p-3 bg-sidebar border-t border-border/40 flex flex-col gap-2">
+        {/* Ayuda Link */}
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Centro de Ayuda">
+              <Link to="/settings" className="text-muted-foreground hover:text-foreground text-xs flex items-center gap-2">
+                <HelpCircle className="h-4 w-4" />
+                <span>Ayuda</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+
         <NavUser />
       </SidebarFooter>
     </Sidebar>
