@@ -28,14 +28,14 @@ export function AdminSidebar({ mobile }: { mobile?: boolean }) {
         { name: "Clientes", href: "/clients", icon: Users },
       ]
     : ([
-        { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-        MODULES_CONFIG.orders.enabled && { name: "Órdenes de Producción", href: "/admin/orders", icon: ClipboardList },
-        MODULES_CONFIG.orders.enabled && { name: "Línea de Producción", href: "/admin/line", icon: Package },
-        MODULES_CONFIG.orders.enabled && { name: "Seguimiento de Órdenes", href: "/admin/tracking", icon: ClipboardList },
-        MODULES_CONFIG.orders.enabled && { name: "Historial de Producción", href: "/admin/history", icon: History },
-        MODULES_CONFIG.inventory.enabled && { name: "Inventario", href: "/admin/inventory", icon: Warehouse },
-        { name: "Usuarios", href: "/admin/users", icon: Users },
-        { name: "Configuración", href: "/admin/settings", icon: SettingsIcon },
+        { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+        MODULES_CONFIG.orders.enabled && { name: "Órdenes de Producción", href: "/orders", icon: ClipboardList },
+        MODULES_CONFIG.orders.enabled && { name: "Línea de Producción", href: "/line", icon: Package },
+        MODULES_CONFIG.orders.enabled && { name: "Seguimiento de Órdenes", href: "/tracking", icon: ClipboardList },
+        MODULES_CONFIG.orders.enabled && { name: "Historial de Producción", href: "/history", icon: History },
+        MODULES_CONFIG.inventory.enabled && { name: "Inventario", href: "/inventory", icon: Warehouse },
+        { name: "Usuarios", href: "/users", icon: Users },
+        { name: "Configuración", href: "/settings", icon: SettingsIcon },
       ].filter(Boolean) as { name: string; href: string; icon: React.ComponentType<any> }[]);
  
   return (

@@ -75,7 +75,7 @@ function App() {
                 <Route path="orders/new" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><CreateOrder /></ProtectedRoute>} />
                 <Route path="orders/:id" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><OrderDetail /></ProtectedRoute>} />
                 <Route path="users" element={<ProtectedRoute allowedRoles={['admin']}><Users /></ProtectedRoute>} />
-                <Route path="settings" element={<ProtectedRoute allowedRoles={['admin']}><Settings /></ProtectedRoute>} />
+                <Route path="settings" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><Settings /></ProtectedRoute>} />
                 <Route path="clients" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><Clients /></ProtectedRoute>} />
                 <Route path="clients/:id" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><ClientDetail /></ProtectedRoute>} />
                 <Route path="projects" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><ProjectsPage /></ProtectedRoute>} />
@@ -124,9 +124,26 @@ function App() {
                   <Route path="metodos-pago" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><MetodosPago /></ProtectedRoute>} />
                   <Route path="transferencias" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><Transferencias /></ProtectedRoute>} />
                   <Route path="reportes" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><Reportes /></ProtectedRoute>} />
-                  <Route path="configuracion" element={<ProtectedRoute allowedRoles={['admin']}><Configuracion /></ProtectedRoute>} />
+                  <Route path="configuracion" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><Configuracion /></ProtectedRoute>} />
                 </Route>
               )}
+
+              {/* Aliases for /admin/* paths */}
+              <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/admin/dashboard" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/admin/orders" element={<Navigate to="/orders" replace />} />
+              <Route path="/admin/orders/new" element={<Navigate to="/orders/new" replace />} />
+              <Route path="/admin/orders/:id" element={<Navigate to="/orders" replace />} />
+              <Route path="/admin/users" element={<Navigate to="/users" replace />} />
+              <Route path="/admin/settings" element={<Navigate to="/settings" replace />} />
+              <Route path="/admin/clients" element={<Navigate to="/clients" replace />} />
+              <Route path="/admin/projects" element={<Navigate to="/projects" replace />} />
+              <Route path="/admin/providers" element={<Navigate to="/providers" replace />} />
+              <Route path="/admin/line" element={<Navigate to="/line" replace />} />
+              <Route path="/admin/tracking" element={<Navigate to="/tracking" replace />} />
+              <Route path="/admin/history" element={<Navigate to="/history" replace />} />
+              <Route path="/admin/inventory" element={<Navigate to="/inventory" replace />} />
+              <Route path="/admin/*" element={<Navigate to="/dashboard" replace />} />
 
               {/* Catch-all */}
               <Route path="*" element={<Navigate to="/login" replace />} />

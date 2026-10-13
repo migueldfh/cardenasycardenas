@@ -1,4 +1,5 @@
 export interface IRawMaterial {
+  id?: string;
   product_id: string;
   material_type: 'CRC_CRG' | 'WTOP' | 'MC1C' | 'MC2C' | 'SBS' | 'LNR' | 'MED';
   roll_width?: number;

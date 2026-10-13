@@ -29,18 +29,7 @@ export function Settings() {
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingLoginImage, setIsUploadingLoginImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
-  if (profile?.role !== "admin") {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center bg-card border border-border rounded-xl">
-        <Shield className="h-12 w-12 text-destructive mb-4" />
-        <h3 className="text-xl font-bold text-foreground">Acceso Restringido</h3>
-        <p className="text-muted-foreground mt-2 max-w-md">
-          Esta página contiene funciones de configuración restringidas. Solo los usuarios con rol de administrador pueden cambiar la apariencia y los colores corporativos.
-        </p>
-      </div>
-    );
-  }
+  const isAdmin = profile?.role === "admin";
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -182,6 +171,15 @@ export function Settings() {
         <p className="text-muted-foreground mt-1">Personaliza el tema, los colores de tu marca y el modo de visualización de la plataforma.</p>
       </div>
 
+      {!isAdmin && (
+        <div className="flex items-center gap-3 p-4 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-800 dark:text-amber-300 text-sm">
+          <Shield className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <p>
+            <strong>Modo de Preferencia Personal:</strong> Puedes alternar el modo claro/oscuro y explorar paletas para tu vista. La carga de logos corporativos y el guardado institucional requieren un rol de <strong>Administrador</strong>.
+          </p>
+        </div>
+      )}
+
       <div className="grid gap-6 md:grid-cols-2">
         {/* MODO CLARO / OSCURO */}
         <Card className="shadow-sm">
@@ -299,21 +297,21 @@ export function Settings() {
                   id="logo-file-input"
                   accept="image/webp"
                   onChange={handleLogoUpload}
-                  disabled={isUploading}
+                  disabled={!isAdmin || isUploading}
                   className="hidden"
                 />
                 <Button
                   type="button"
                   variant="outline"
                   className="w-full gap-2"
-                  disabled={isUploading}
+                  disabled={!isAdmin || isUploading}
                   onClick={() => document.getElementById("logo-file-input")?.click()}
                 >
                   <Upload className="h-4 w-4" />
-                  Cargar .webp
+                  {isAdmin ? "Cargar .webp" : "Solo Administrador"}
                 </Button>
               </div>
-              {logoUrl && (
+              {logoUrl && isAdmin && (
                 <Button
                   type="button"
                   variant="destructive"
@@ -364,21 +362,21 @@ export function Settings() {
                   id="login-image-file-input"
                   accept="image/webp"
                   onChange={handleLoginImageUpload}
-                  disabled={isUploadingLoginImage}
+                  disabled={!isAdmin || isUploadingLoginImage}
                   className="hidden"
                 />
                 <Button
                   type="button"
                   variant="outline"
                   className="w-full gap-2"
-                  disabled={isUploadingLoginImage}
+                  disabled={!isAdmin || isUploadingLoginImage}
                   onClick={() => document.getElementById("login-image-file-input")?.click()}
                 >
                   <Upload className="h-4 w-4" />
-                  Cargar .webp
+                  {isAdmin ? "Cargar .webp" : "Solo Administrador"}
                 </Button>
               </div>
-              {loginImageUrl && (
+              {loginImageUrl && isAdmin && (
                 <Button
                   type="button"
                   variant="destructive"
@@ -433,7 +431,7 @@ export function Settings() {
 
             <Button
               onClick={handleSaveCorporate}
-              disabled={isSaving}
+              disabled={!isAdmin || isSaving}
               className="w-full gap-2"
             >
               {isSaving ? (
@@ -441,7 +439,7 @@ export function Settings() {
               ) : (
                 <Check className="h-4 w-4" />
               )}
-              Guardar Cambios Corporativos
+              {isAdmin ? "Guardar Cambios Corporativos" : "Requiere Rol de Administrador"}
             </Button>
           </CardContent>
         </Card>
