@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
- 
+
 export function AdminLayout() {
   const location = useLocation()
   const [selectedMonth, setSelectedMonth] = React.useState("Septiembre 2026")
@@ -49,15 +49,15 @@ export function AdminLayout() {
       users: "Contadores / Usuarios",
       settings: "Configuración",
     }
-    
+
     if (map[segment]) {
       return map[segment]
     }
-    
+
     if (index > 0 && array[index - 1] === "orders") {
       return "Detalle"
     }
-    
+
     return segment.charAt(0).toUpperCase() + segment.slice(1)
   }
 
@@ -145,7 +145,7 @@ export function AdminLayout() {
         </header>
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 md:p-8">
-          <div className="max-w-7xl mx-auto w-full">
+          <div className="max-w mx-auto w-full">
             <Outlet />
           </div>
         </div>
