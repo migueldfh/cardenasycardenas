@@ -1,10 +1,37 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useTheme, hslToHex } from "@/contexts/ThemeContext";
 import { CLIENT_THEMES, DEFAULT_CLIENT_THEME, type ThemeColorPalette } from "@/config/themes";
-import { Sun, Moon, RotateCcw, Palette, Check, Shield, Upload, Trash2, Image as ImageIcon } from "lucide-react";
+import {
+  Sun,
+  Moon,
+  RotateCcw,
+  Palette,
+  Check,
+  Shield,
+  Upload,
+  Trash2,
+  Image as ImageIcon,
+  Lock,
+  ShieldCheck,
+  Key,
+  RefreshCw,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { sileo } from "sileo";
@@ -30,6 +57,91 @@ export function Settings() {
   const [isUploadingLoginImage, setIsUploadingLoginImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const isAdmin = profile?.role === "admin";
+
+  // SAT Vault PIN management state
+  const [currentPin, setCurrentPin] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [isUpdatingPin, setIsUpdatingPin] = useState(false);
+
+  // SAT Vault Audit logs state
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+
+  const fetchAuditLogs = async () => {
+    setIsLoadingLogs(true);
+    try {
+      const { data, error } = await supabase
+        .from("user_activity_logs")
+        .select("*")
+        .in("action", [
+          "ACCESO_AUTORIZADO_CIEC_SAT",
+          "ACCESO_FALLIDO_CIEC_SAT",
+          "CAMBIO_PIN_BOVEDA_SAT",
+        ])
+        .order("created_at", { ascending: false })
+        .limit(15);
+
+      if (error) throw error;
+      setAuditLogs(data || []);
+    } catch (err: any) {
+      console.error("Error fetching SAT audit logs:", err);
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAuditLogs();
+  }, []);
+
+  const handleUpdatePin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPin) {
+      sileo.error({ title: "Ingresa el PIN actual" });
+      return;
+    }
+    if (newPin.length < 4) {
+      sileo.error({ title: "El nuevo PIN debe tener al menos 4 caracteres" });
+      return;
+    }
+    if (newPin !== confirmPin) {
+      sileo.error({ title: "Los nuevos PINs no coinciden" });
+      return;
+    }
+
+    setIsUpdatingPin(true);
+    try {
+      const { data, error } = await supabase.rpc("set_sat_vault_pin", {
+        p_current_pin: currentPin,
+        p_new_pin: newPin,
+        p_updated_by: profile?.email || "admin@cardenas.com",
+      });
+
+      if (error) throw error;
+      if (data && !data.success) {
+        sileo.error({ title: "Error al actualizar PIN", description: data.error });
+        return;
+      }
+
+      sileo.success({
+        title: "PIN Maestro actualizado",
+        description: "El nuevo PIN para la Bóveda SAT ha sido configurado con éxito.",
+      });
+      setCurrentPin("");
+      setNewPin("");
+      setConfirmPin("");
+      fetchAuditLogs();
+    } catch (err: any) {
+      console.error("Error updating vault PIN:", err);
+      sileo.error({
+        title: "Error al actualizar PIN",
+        description: err.message || "Ocurrió un error inesperado.",
+      });
+    } finally {
+      setIsUpdatingPin(false);
+    }
+  };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -444,6 +556,182 @@ export function Settings() {
           </CardContent>
         </Card>
       </div>
+
+      {/* BÓVEDA FISCAL SAT & SEGURIDAD CIEC */}
+      <Card className="shadow-sm border-emerald-200/60 dark:border-emerald-800/60">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-emerald-600" />
+              <CardTitle className="text-lg">Bóveda de Seguridad CIEC (SAT)</CardTitle>
+              <Badge variant="outline" className="text-xs bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 font-mono">
+                AES-256 pgcrypto
+              </Badge>
+            </div>
+            <CardDescription className="mt-1">
+              Protección criptográfica en reposo para las contraseñas CIEC del SAT, control de acceso mediante PIN Maestro y bitácora inmutable de auditoría.
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchAuditLogs}
+            disabled={isLoadingLogs}
+            className="gap-2 text-muted-foreground hover:text-foreground h-8 text-xs"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isLoadingLogs ? "animate-spin" : ""}`} />
+            Actualizar Bitácora
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-12">
+            {/* PIN Master Update Form */}
+            <form onSubmit={handleUpdatePin} className="lg:col-span-4 p-4 rounded-xl border border-border bg-card/60 space-y-4">
+              <div className="flex items-center gap-2">
+                <Key className="h-4 w-4 text-emerald-600" />
+                <h4 className="text-sm font-semibold text-foreground">Configurar PIN Maestro</h4>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                El PIN Maestro se requiere para autorizar el descifrado temporal (15s) de las contraseñas CIEC. PIN por defecto inicial: <span className="font-mono font-semibold text-foreground">1234</span>.
+              </p>
+
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">PIN Actual</Label>
+                  <Input
+                    type="password"
+                    maxLength={8}
+                    placeholder="••••"
+                    value={currentPin}
+                    onChange={(e) => setCurrentPin(e.target.value)}
+                    className="h-8 text-xs font-mono tracking-widest"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Nuevo PIN Maestro (4-8 dígitos)</Label>
+                  <Input
+                    type="password"
+                    maxLength={8}
+                    placeholder="••••"
+                    value={newPin}
+                    onChange={(e) => setNewPin(e.target.value)}
+                    className="h-8 text-xs font-mono tracking-widest"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Confirmar Nuevo PIN</Label>
+                  <Input
+                    type="password"
+                    maxLength={8}
+                    placeholder="••••"
+                    value={confirmPin}
+                    onChange={(e) => setConfirmPin(e.target.value)}
+                    className="h-8 text-xs font-mono tracking-widest"
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                size="sm"
+                disabled={!isAdmin || isUpdatingPin || !currentPin || !newPin || !confirmPin}
+                className="w-full bg-[#1e3a5f] hover:bg-[#152a45] text-white text-xs h-8 gap-2"
+              >
+                {isUpdatingPin ? (
+                  <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                ) : (
+                  <Lock className="h-3.5 w-3.5" />
+                )}
+                {isAdmin ? "Actualizar PIN Maestro" : "Solo Administradores"}
+              </Button>
+            </form>
+
+            {/* Audit Logs Table */}
+            <div className="lg:col-span-8 p-4 rounded-xl border border-border bg-card/60 flex flex-col justify-between space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-emerald-600" />
+                  <h4 className="text-sm font-semibold text-foreground">Bitácora de Auditoría de Accesos SAT</h4>
+                </div>
+                <Badge variant="outline" className="text-[10px]">
+                  {auditLogs.length} eventos recientes
+                </Badge>
+              </div>
+
+              <div className="rounded-md border border-border/60 overflow-hidden overflow-x-auto max-h-[300px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40 text-[11px]">
+                      <TableHead className="py-2">Fecha / Hora</TableHead>
+                      <TableHead className="py-2">Usuario</TableHead>
+                      <TableHead className="py-2">Cliente / RFC</TableHead>
+                      <TableHead className="py-2">Motivo</TableHead>
+                      <TableHead className="py-2 text-right">Resultado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="text-xs">
+                    {auditLogs.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-6 text-muted-foreground text-xs">
+                          {isLoadingLogs ? "Cargando bitácora..." : "No hay registros de acceso recientes a la Bóveda."}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      auditLogs.map((log) => {
+                        const isAuthorized = log.action === "ACCESO_AUTORIZADO_CIEC_SAT";
+                        const isPinChange = log.action === "CAMBIO_PIN_BOVEDA_SAT";
+                        const dateFormatted = new Date(log.created_at).toLocaleString("es-MX", {
+                          dateStyle: "short",
+                          timeStyle: "medium",
+                        });
+
+                        return (
+                          <TableRow key={log.id} className="hover:bg-muted/20">
+                            <TableCell className="font-mono text-[11px] whitespace-nowrap text-muted-foreground">
+                              {dateFormatted}
+                            </TableCell>
+                            <TableCell className="font-medium text-[11px] whitespace-nowrap">
+                              {log.user_email || "Usuario del sistema"}
+                            </TableCell>
+                            <TableCell className="max-w-[150px] truncate text-[11px]">
+                              {isPinChange ? (
+                                <span className="font-mono text-muted-foreground">Bóveda Global</span>
+                              ) : (
+                                <div>
+                                  <div className="truncate font-semibold text-foreground">{log.details?.client_name || "Cliente"}</div>
+                                  <div className="font-mono text-[10px] text-muted-foreground">{log.details?.client_rfc || "—"}</div>
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-[11px] max-w-[180px] truncate text-muted-foreground" title={log.details?.reason || log.details?.action_desc}>
+                              {log.details?.reason || log.details?.action_desc || (isPinChange ? "Actualización de PIN" : "Consulta")}
+                            </TableCell>
+                            <TableCell className="text-right whitespace-nowrap">
+                              {isAuthorized ? (
+                                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] gap-1 font-normal py-0">
+                                  <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Autorizado
+                                </Badge>
+                              ) : isPinChange ? (
+                                <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] gap-1 font-normal py-0">
+                                  <Key className="h-3 w-3 text-blue-600" /> PIN Cambiado
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-rose-50 text-rose-700 border-rose-200 text-[10px] gap-1 font-normal py-0">
+                                  <AlertTriangle className="h-3 w-3 text-rose-600" /> Denegado
+                                </Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* PERSONALIZACIÓN AVANZADA */}
       <Card className="shadow-sm">
