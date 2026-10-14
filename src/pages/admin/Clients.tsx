@@ -42,15 +42,14 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowRight,
-  Eye,
-  EyeOff,
-  Key,
-  Copy,
   ExternalLink,
   Loader2,
   Trash2,
+  Lock,
+  ShieldCheck,
 } from "lucide-react";
 import { sileo } from "sileo";
+import { CiecVaultModal } from "@/components/CiecVaultModal";
 import {
   useFinanceClients,
   useCreateFinanceClient,
@@ -95,7 +94,29 @@ export function Clients() {
   const [isNewClientOpen, setIsNewClientOpen] = useState(false);
   const [isEditClientOpen, setIsEditClientOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [revealedCiecIds, setRevealedCiecIds] = useState<Record<string, boolean>>({});
+
+  // CIEC Security Vault Modal state
+  const [vaultModal, setVaultModal] = useState<{
+    isOpen: boolean;
+    clientId: string | null;
+    clientName: string;
+    clientRfc: string;
+  }>({
+    isOpen: false,
+    clientId: null,
+    clientName: "",
+    clientRfc: "",
+  });
+
+  const openVault = (clientId: string, clientName: string, clientRfc: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setVaultModal({
+      isOpen: true,
+      clientId,
+      clientName,
+      clientRfc,
+    });
+  };
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -256,14 +277,6 @@ export function Clients() {
     }
   };
 
-  const toggleRevealCiec = (id: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setRevealedCiecIds((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
-
   const handleOpenCreateModal = () => {
     setClientForm({
       name: "",
@@ -410,7 +423,7 @@ export function Clients() {
       `"${c.name.replace(/"/g, '""')}"`,
       `"${c.legalName.replace(/"/g, '""')}"`,
       `"${c.rfc}"`,
-      `"${c.ciec}"`,
+      `"${c.ciec ? '[PROTEGIDO EN BÓVEDA SAT]' : ''}"`,
       `"${c.personType}"`,
       `"${c.regime.replace(/"/g, '""')}"`,
       `"${c.economicActivity.replace(/"/g, '""')}"`,
@@ -729,7 +742,6 @@ export function Clients() {
                   ) : (
                     paginatedClients.map((c) => {
                       const isSelected = selectedClient?.id === c.id;
-                      const isCiecRevealed = !!revealedCiecIds[c.id];
 
                       return (
                         <TableRow
@@ -777,33 +789,19 @@ export function Clients() {
                           </TableCell>
                           <TableCell className="py-2.5" onClick={(e) => e.stopPropagation()}>
                             {c.ciec ? (
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-mono text-[11px] bg-muted/50 px-1.5 py-0.5 rounded border border-border/50 text-foreground">
-                                  {isCiecRevealed ? c.ciec : "••••••"}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6 px-2 text-[10px] gap-1.5 font-mono border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                                onClick={(e) => openVault(c.id, c.name, c.rfc, e)}
+                                title="Acceso seguro a Bóveda SAT (Requiere PIN)"
+                              >
+                                <Lock className="h-3 w-3 text-emerald-600" />
+                                <span>••••••••</span>
+                                <span className="text-[9px] font-sans font-semibold text-emerald-700 dark:text-emerald-300 underline">
+                                  Ver
                                 </span>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                  onClick={(e) => toggleRevealCiec(c.id, e)}
-                                  title={isCiecRevealed ? "Ocultar CIEC" : "Mostrar CIEC"}
-                                >
-                                  {isCiecRevealed ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-muted-foreground hover:text-primary"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigator.clipboard.writeText(c.ciec);
-                                    sileo.success({ title: "CIEC copiada al portapapeles" });
-                                  }}
-                                  title="Copiar contraseña CIEC"
-                                >
-                                  <Copy className="h-3 w-3" />
-                                </Button>
-                              </div>
+                              </Button>
                             ) : (
                               <span className="text-muted-foreground/60 text-[11px] italic">Sin CIEC</span>
                             )}
@@ -1016,46 +1014,32 @@ export function Clients() {
                       </div>
                     </div>
 
-                    {/* SAT Access Credential Card */}
-                    <div className="bg-amber-50/50 p-3 rounded-lg border border-amber-200/80 space-y-1.5">
+                    {/* Bóveda Fiscal SAT Access Card */}
+                    <div className="bg-emerald-50/60 dark:bg-emerald-950/30 p-3.5 rounded-lg border border-emerald-200 dark:border-emerald-800 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-amber-900 font-semibold text-xs flex items-center gap-1.5">
-                          <Key className="h-3.5 w-3.5 text-amber-700" /> Clave CIEC (SAT)
+                        <span className="text-emerald-900 dark:text-emerald-300 font-bold text-xs flex items-center gap-1.5">
+                          <ShieldCheck className="h-4 w-4 text-emerald-600" /> Bóveda Fiscal SAT
                         </span>
-                        {selectedClient.ciec && (
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => toggleRevealCiec(selectedClient.id)}
-                              className="text-amber-800 hover:text-amber-950 text-[10px] flex items-center gap-0.5"
-                            >
-                              {revealedCiecIds[selectedClient.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                              {revealedCiecIds[selectedClient.id] ? "Ocultar" : "Mostrar"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                navigator.clipboard.writeText(selectedClient.ciec);
-                                sileo.success({ title: "CIEC copiada al portapapeles" });
-                              }}
-                              className="text-amber-900 hover:underline text-[10px] ml-1.5 flex items-center gap-0.5"
-                            >
-                              <Copy className="h-3 w-3" /> Copiar
-                            </button>
-                          </div>
-                        )}
+                        <Badge variant="outline" className="text-[9px] bg-white dark:bg-card border-emerald-300 font-mono text-emerald-800 dark:text-emerald-300">
+                          AES-256
+                        </Badge>
                       </div>
-                      <p className="font-mono text-xs font-semibold text-foreground select-all bg-white/70 p-1.5 rounded border border-amber-200/50">
-                        {selectedClient.ciec ? (
-                          revealedCiecIds[selectedClient.id] ? (
-                            selectedClient.ciec
-                          ) : (
-                            "••••••••"
-                          )
-                        ) : (
-                          <span className="text-muted-foreground italic font-sans">Sin contraseña CIEC registrada</span>
-                        )}
+                      <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80 leading-relaxed">
+                        Contraseña CIEC protegida mediante cifrado y auditoría obligatoria de accesos.
                       </p>
+                      {selectedClient.ciec ? (
+                        <Button
+                          size="sm"
+                          className="w-full h-8 text-xs bg-[#1e3a5f] hover:bg-[#152a45] text-white gap-2 font-medium"
+                          onClick={(e) => openVault(selectedClient.id, selectedClient.name, selectedClient.rfc, e)}
+                        >
+                          <Lock className="h-3.5 w-3.5" /> Desbloquear Contraseña (PIN)
+                        </Button>
+                      ) : (
+                        <p className="text-muted-foreground italic text-[11px] py-1">
+                          Sin contraseña CIEC registrada.
+                        </p>
+                      )}
                     </div>
                   </TabsContent>
 
@@ -1473,6 +1457,16 @@ export function Clients() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* CIEC Security Vault Modal */}
+      <CiecVaultModal
+        isOpen={vaultModal.isOpen}
+        onClose={() => setVaultModal((prev) => ({ ...prev, isOpen: false }))}
+        clientId={vaultModal.clientId}
+        clientName={vaultModal.clientName}
+        clientRfc={vaultModal.clientRfc}
+      />
     </div>
   );
 }
+

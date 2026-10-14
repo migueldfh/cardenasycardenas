@@ -22,11 +22,11 @@ import {
   FileText,
   Pencil,
   Search,
-  Eye,
-  EyeOff,
-  Key,
   Building2,
+  Lock,
+  ShieldCheck,
 } from "lucide-react";
+import { CiecVaultModal } from "@/components/CiecVaultModal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,7 +100,7 @@ export function ClientDetail() {
   const [projectStatusFilter, setProjectStatusFilter] = React.useState("all");
 
   const [isEditOpen, setIsEditOpen] = React.useState(false);
-  const [showCiec, setShowCiec] = React.useState(false);
+  const [isVaultOpen, setIsVaultOpen] = React.useState(false);
   const [editForm, setEditForm] = React.useState({
     name: "",
     trade_name: "",
@@ -520,38 +520,34 @@ export function ClientDetail() {
               </div>
             </div>
 
-            {/* CIEC Password field */}
-            <div className="bg-muted/40 p-2 rounded-md border border-border/60">
+            {/* Bóveda Fiscal SAT - CIEC Password */}
+            <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-2.5 rounded-md border border-emerald-200 dark:border-emerald-800/60">
               <div className="flex items-center justify-between text-[11px] mb-1">
-                <span className="text-muted-foreground font-medium flex items-center gap-1">
-                  <Key className="h-3 w-3 text-amber-600" /> Contraseña CIEC (SAT):
+                <span className="text-emerald-900 dark:text-emerald-300 font-semibold flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Contraseña CIEC (SAT):
                 </span>
-                {client.ciec && (
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setShowCiec(!showCiec)}
-                      className="text-muted-foreground hover:text-foreground text-[10px] flex items-center gap-0.5"
-                    >
-                      {showCiec ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                      {showCiec ? "Ocultar" : "Mostrar"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(client.ciec);
-                        sileo.success({ title: "CIEC copiada al portapapeles" });
-                      }}
-                      className="text-primary hover:underline text-[10px] ml-1.5 flex items-center gap-0.5"
-                    >
-                      <Copy className="h-3 w-3" /> Copiar
-                    </button>
-                  </div>
+                <Badge variant="outline" className="text-[9px] bg-background border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 font-mono">
+                  AES-256
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between mt-1.5">
+                <span className="font-mono text-xs text-muted-foreground tracking-widest">
+                  ••••••••••••
+                </span>
+                {client.ciec ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsVaultOpen(true)}
+                    className="h-6 px-2 text-[10px] bg-white dark:bg-card border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100/50 text-emerald-800 dark:text-emerald-300 font-medium gap-1 shadow-xs"
+                  >
+                    <Lock className="h-3 w-3 text-emerald-600" /> Desbloquear Bóveda
+                  </Button>
+                ) : (
+                  <span className="text-muted-foreground italic text-[11px]">No registrada</span>
                 )}
               </div>
-              <p className="font-mono font-medium text-foreground text-xs select-all">
-                {client.ciec ? (showCiec ? client.ciec : "••••••••") : <span className="text-muted-foreground italic">No registrada</span>}
-              </p>
             </div>
 
             {client.fiscal_regime && (
@@ -1293,6 +1289,16 @@ export function ClientDetail() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* CIEC Security Vault Modal */}
+      <CiecVaultModal
+        isOpen={isVaultOpen}
+        onClose={() => setIsVaultOpen(false)}
+        clientId={client?.id || null}
+        clientName={client?.name || ""}
+        clientRfc={client?.tax_id_rfc || ""}
+      />
     </div>
   );
 }
+

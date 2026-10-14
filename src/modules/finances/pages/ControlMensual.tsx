@@ -40,12 +40,12 @@ import {
   ChevronRight,
   ChevronLeft,
   Plus,
-  Eye,
-  EyeOff,
-  Copy,
   ExternalLink,
+  Lock,
+  ShieldCheck,
 } from "lucide-react";
 import { sileo } from "sileo";
+import { CiecVaultModal } from "@/components/CiecVaultModal";
 import { useFinanceClients } from "../hooks";
 
 interface ClientObligationRow {
@@ -83,8 +83,29 @@ export function ControlMensual() {
   const [selectedRegimen, setSelectedRegimen] = useState("all");
   const [selectedPersona, setSelectedPersona] = useState("all");
   const [selectedClient, setSelectedClient] = useState<ClientObligationRow | null>(null);
-  const [showCiecDialog, setShowCiecDialog] = useState(false);
-  const [revealedCiec, setRevealedCiec] = useState<Record<string, boolean>>({});
+
+  // CIEC Security Vault Modal state
+  const [vaultModal, setVaultModal] = useState<{
+    isOpen: boolean;
+    clientId: string | null;
+    clientName: string;
+    clientRfc: string;
+  }>({
+    isOpen: false,
+    clientId: null,
+    clientName: "",
+    clientRfc: "",
+  });
+
+  const openVault = (clientId: string, clientName: string, clientRfc: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setVaultModal({
+      isOpen: true,
+      clientId,
+      clientName,
+      clientRfc,
+    });
+  };
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -205,17 +226,6 @@ export function ControlMensual() {
   const startIndex = (validCurrentPage - 1) * pageSize;
   const paginatedRows = displayRows.slice(startIndex, startIndex + pageSize);
 
-  const toggleCiecVisibility = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setRevealedCiec((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const copyToClipboard = (text: string, label: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    navigator.clipboard.writeText(text);
-    sileo.success({ title: `${label} copiado al portapapeles` });
-  };
-
   const handleExportCSV = () => {
     const headers = [
       "Nombre",
@@ -236,7 +246,7 @@ export function ControlMensual() {
     const rows = displayRows.map((c) => [
       `"${c.name.replace(/"/g, '""')}"`,
       `"${c.rfc}"`,
-      `"${c.ciec || ""}"`,
+      `"${c.ciec ? "[PROTEGIDO EN BÓVEDA SAT]" : ""}"`,
       `"${c.persona}"`,
       `"${(c.regimen || "").replace(/"/g, '""')}"`,
       `"${(c.economicActivity || "").replace(/"/g, '""')}"`,
@@ -592,25 +602,17 @@ export function ControlMensual() {
                     </TableCell>
                     <TableCell className="text-[11px] whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       {row.ciec ? (
-                        <div className="flex items-center gap-1 font-mono text-[11px] bg-muted/40 px-1.5 py-0.5 rounded border border-border/40 w-fit">
-                          <span>{revealedCiec[row.id] ? row.ciec : "••••••••"}</span>
-                          <button
-                            type="button"
-                            onClick={(e) => toggleCiecVisibility(row.id, e)}
-                            className="text-muted-foreground hover:text-foreground"
-                            title={revealedCiec[row.id] ? "Ocultar" : "Mostrar"}
-                          >
-                            {revealedCiec[row.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => copyToClipboard(row.ciec!, "CIEC", e)}
-                            className="text-muted-foreground hover:text-foreground"
-                            title="Copiar CIEC"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </button>
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => openVault(row.id, row.name, row.rfc, e)}
+                          className="h-6 px-1.5 text-[11px] font-mono text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/60 flex items-center gap-1.5"
+                          title="Bóveda Segura CIEC (SAT)"
+                        >
+                          <Lock className="h-3 w-3 text-emerald-600 shrink-0" />
+                          <span>••••••••</span>
+                          <span className="text-[10px] font-sans font-medium text-muted-foreground ml-0.5">Ver</span>
+                        </Button>
                       ) : (
                         <span className="text-muted-foreground text-[10px]">Sin CIEC</span>
                       )}
@@ -793,27 +795,23 @@ export function ControlMensual() {
                   <span className="text-[10px] text-muted-foreground block">RFC</span>
                   <span className="font-semibold text-foreground font-mono">{selectedClient.rfc}</span>
                 </div>
-                <div>
-                  <span className="text-[10px] text-muted-foreground block">Contraseña SAT / CIEC</span>
-                  <div className="flex items-center gap-1.5 font-mono font-semibold text-foreground">
-                    <span>{showCiecDialog ? (selectedClient.ciec || "—") : "••••••••"}</span>
-                    {selectedClient.ciec && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => setShowCiecDialog(!showCiecDialog)}
-                          className="text-muted-foreground hover:text-foreground"
-                        >
-                          {showCiecDialog ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(selectedClient.ciec!, "CIEC")}
-                          className="text-muted-foreground hover:text-foreground"
-                        >
-                          <Copy className="h-3 w-3" />
-                        </button>
-                      </>
+                <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-2 rounded border border-emerald-200 dark:border-emerald-800/60">
+                  <span className="text-[10px] text-emerald-900 dark:text-emerald-300 font-semibold flex items-center gap-1">
+                    <ShieldCheck className="h-3 w-3 text-emerald-600" /> Bóveda SAT
+                  </span>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="font-mono text-xs text-muted-foreground tracking-wider">••••••••</span>
+                    {selectedClient.ciec ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => openVault(selectedClient.id, selectedClient.name, selectedClient.rfc, e)}
+                        className="h-5 px-1.5 text-[10px] bg-white dark:bg-card border-emerald-300 text-emerald-800 dark:text-emerald-300 gap-1 font-medium"
+                      >
+                        <Lock className="h-2.5 w-2.5 text-emerald-600" /> Desbloquear
+                      </Button>
+                    ) : (
+                      <span className="text-muted-foreground text-[10px]">Sin CIEC</span>
                     )}
                   </div>
                 </div>
@@ -965,6 +963,15 @@ export function ControlMensual() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* CIEC Security Vault Modal */}
+      <CiecVaultModal
+        isOpen={vaultModal.isOpen}
+        onClose={() => setVaultModal((prev) => ({ ...prev, isOpen: false }))}
+        clientId={vaultModal.clientId}
+        clientName={vaultModal.clientName}
+        clientRfc={vaultModal.clientRfc}
+      />
     </div>
   );
 }

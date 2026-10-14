@@ -127,7 +127,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem className="flex items-center gap-3">
             {logoUrl ? (
-              <img src={logoUrl} alt="Cárdenas & Cárdenas" className="h-10 w-auto object-contain" />
+              <img src={logoUrl} alt="Cárdenas & Cárdenas" className="w-auto object-contain" />
             ) : (
               <div className="flex items-center gap-2.5">
                 <div className="h-9 w-9 rounded-lg bg-[#1e3a5f] text-white flex items-center justify-center font-bold text-sm tracking-tighter shadow-xs">

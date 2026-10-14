@@ -36,19 +36,17 @@ import {
   Building2,
   User,
   ArrowRight,
-  Eye,
-  EyeOff,
-  Copy,
-  Key,
+  Lock,
 } from "lucide-react";
 import { sileo } from "sileo";
+import { CiecVaultModal } from "@/components/CiecVaultModal";
 import { useFinanceClients } from "../hooks";
 
 export function ControlMensualDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data: clients = [], isLoading } = useFinanceClients();
-  const [showCiec, setShowCiec] = useState(false);
+  const [isVaultOpen, setIsVaultOpen] = useState(false);
 
   const foundClient = useMemo(() => {
     return clients.find((c) => c.id === id);
@@ -384,34 +382,32 @@ export function ControlMensualDetail() {
 
           {/* Secondary Fiscal & SAT Credentials Row */}
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 p-3 bg-muted/20 rounded-lg border text-xs">
-            <div className="flex items-center gap-2">
-              <Key className="h-4 w-4 text-primary shrink-0" />
-              <div>
-                <span className="text-[10px] text-muted-foreground block">Contraseña SAT / CIEC</span>
-                <div className="flex items-center gap-1 font-mono font-semibold text-foreground">
-                  <span>{showCiec ? (clientData.ciec || "—") : "••••••••"}</span>
-                  {clientData.ciec && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setShowCiec(!showCiec)}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        {showCiec ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(clientData.ciec);
-                          sileo.success({ title: "CIEC copiado al portapapeles" });
-                        }}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </button>
-                    </>
-                  )}
-                </div>
+            <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-2.5 rounded-md border border-emerald-200 dark:border-emerald-800/60">
+              <div className="flex items-center justify-between text-[11px] mb-1">
+                <span className="text-emerald-900 dark:text-emerald-300 font-semibold flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Contraseña CIEC (SAT)
+                </span>
+                <Badge variant="outline" className="text-[9px] bg-background border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 font-mono">
+                  AES-256
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between mt-1.5">
+                <span className="font-mono text-xs text-muted-foreground tracking-widest">
+                  ••••••••••••
+                </span>
+                {clientData.ciec ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsVaultOpen(true)}
+                    className="h-6 px-2 text-[10px] bg-white dark:bg-card border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100/50 text-emerald-800 dark:text-emerald-300 font-medium gap-1 shadow-xs"
+                  >
+                    <Lock className="h-3 w-3 text-emerald-600" /> Desbloquear
+                  </Button>
+                ) : (
+                  <span className="text-muted-foreground italic text-[11px]">No registrada</span>
+                )}
               </div>
             </div>
 
@@ -712,6 +708,15 @@ export function ControlMensualDetail() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* CIEC Security Vault Modal */}
+      <CiecVaultModal
+        isOpen={isVaultOpen}
+        onClose={() => setIsVaultOpen(false)}
+        clientId={clientData.id || null}
+        clientName={clientData.name || ""}
+        clientRfc={clientData.rfc || ""}
+      />
     </div>
   );
 }
