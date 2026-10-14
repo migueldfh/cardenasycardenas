@@ -20,6 +20,19 @@ export interface IFinanceClient {
   notes?: string | null;
   person_type?: string | null;
   status?: string | null;
+  // Monthly accounting control fields
+  compliance_opinion?: 'Positiva' | 'Negativa' | 'Pendiente' | string | null;
+  stationery_received?: boolean | null;
+  stationery_date?: string | null;
+  accounting_capture_pct?: number | null;
+  tax_calculation?: boolean | null;
+  tax_presented?: boolean | null;
+  diot_presented?: boolean | null;
+  financial_statements?: boolean | null;
+  accounting_notes?: string | null;
+  review_date?: string | null;
+  accounting_period?: string | null;
+  accounting_status?: 'Completado' | 'En proceso' | 'Pendiente' | 'En riesgo' | 'Atrasado' | string | null;
 }
 
 export type DecretoProcessStage =

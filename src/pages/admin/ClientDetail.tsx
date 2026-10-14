@@ -581,6 +581,29 @@ export function ClientDetail() {
               )}
             </div>
 
+            {client.compliance_opinion && (
+              <div className="pt-2 border-t border-border/60 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-[11px]">Opinión SAT:</span>
+                  <Badge variant="outline" className={`text-[10px] ${client.compliance_opinion === 'Positiva' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>
+                    {client.compliance_opinion}
+                  </Badge>
+                </div>
+                {client.accounting_capture_pct !== null && client.accounting_capture_pct !== undefined && (
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-muted-foreground">Avance Contabilidad ({client.accounting_period || 'Julio 2026'}):</span>
+                    <span className="font-semibold text-foreground">{client.accounting_capture_pct}%</span>
+                  </div>
+                )}
+                {client.accounting_notes && (
+                  <div className="text-[11px] text-amber-800 bg-amber-50/60 p-1.5 rounded border border-amber-200/50 mt-1">
+                    <span className="font-semibold block text-[10px]">Nota Contable:</span>
+                    {client.accounting_notes}
+                  </div>
+                )}
+              </div>
+            )}
+
             {client.notes && (
               <div className="pt-2 border-t border-border/60 bg-amber-50/50 p-2 rounded border-amber-200/60">
                 <span className="text-amber-800 font-semibold block text-[10px] uppercase">Comentarios / Notas:</span>

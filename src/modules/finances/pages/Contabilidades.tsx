@@ -46,8 +46,15 @@ export function Contabilidades() {
       const isCompleted = index % 3 === 0;
       const isInRisk = index % 7 === 0 && !isCompleted;
 
-      const status = isCompleted ? "Completada" : isInRisk ? "En riesgo" : "En proceso";
-      const capture = isCompleted ? 100 : isInRisk ? 25 : index % 2 === 0 ? 80 : 60;
+      const hasReal = c.accounting_capture_pct !== null && c.accounting_capture_pct !== undefined;
+      const capture = hasReal
+        ? Number(c.accounting_capture_pct)
+        : isCompleted ? 100 : isInRisk ? 25 : index % 2 === 0 ? 80 : 60;
+      
+      const status = hasReal && c.accounting_status
+        ? (c.accounting_status === "Completado" ? "Completada" : c.accounting_status)
+        : isCompleted ? "Completada" : isInRisk ? "En riesgo" : "En proceso";
+
       const isrNum = ((index * 37 + 120) * 110) % 75000 + 4500;
       const ivaNum = Math.round(isrNum * 0.45);
 
@@ -56,12 +63,12 @@ export function Contabilidades() {
         client: c.name,
         rfc: c.rfc || "—",
         accountant: c.assigned_accountant || "Sin asignar",
-        month: "Septiembre 2026",
+        month: c.accounting_period || "Julio 2026",
         capture,
         isrTax: `$${isrNum.toLocaleString()}`,
         ivaTax: `$${ivaNum.toLocaleString()}`,
         status,
-        deliveredAt: isCompleted ? "08 Sep 2026" : "Pendiente",
+        deliveredAt: status === "Completada" ? "08 Ago 2026" : "Pendiente",
       };
     });
   }, [rawClients]);

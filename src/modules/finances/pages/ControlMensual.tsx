@@ -61,6 +61,7 @@ interface ClientObligationRow {
   invoiceEmail?: string;
   notes?: string;
   papeleria: boolean;
+  stationeryDate?: string;
   captura: number;
   calculo: boolean;
   presentado: boolean;
@@ -71,6 +72,7 @@ interface ClientObligationRow {
   ultAct: string;
   email: string;
   telefono: string;
+  accountingPeriod?: string;
 }
 
 export function ControlMensual() {
@@ -114,30 +116,55 @@ export function ControlMensual() {
   // Map real database clients into obligation rows
   const clientObligations: ClientObligationRow[] = useMemo(() => {
     return rawClients.map((c, index) => {
-      // Deterministically derive initial progress based on client index and completeness of data
+      // Deterministically derive initial progress based on client index and completeness of data if not yet registered
       const isCompleted = index % 4 === 0;
       const isRisk = index % 9 === 0 && !isCompleted;
       const isOverdue = index % 13 === 0 && !isCompleted && !isRisk;
       const isProcess = !isCompleted && !isRisk && !isOverdue;
 
-      const estatus: ClientObligationRow["estatus"] = isCompleted
+      const hasRealData = c.accounting_capture_pct !== null && c.accounting_capture_pct !== undefined;
+
+      const captura = hasRealData
+        ? Number(c.accounting_capture_pct)
+        : isCompleted ? 100 : isProcess ? (index % 2 === 0 ? 80 : 60) : isRisk ? 40 : 15;
+
+      const papeleria = hasRealData
+        ? Boolean(c.stationery_received)
+        : captura > 0;
+
+      const calculo = hasRealData
+        ? Boolean(c.tax_calculation)
+        : isCompleted || (isProcess && captura >= 80);
+
+      const presentado = hasRealData
+        ? Boolean(c.tax_presented)
+        : isCompleted;
+
+      const diot = hasRealData
+        ? Boolean(c.diot_presented)
+        : isCompleted;
+
+      const ef = hasRealData
+        ? Boolean(c.financial_statements)
+        : isCompleted;
+
+      const opinion: ClientObligationRow["opinion"] = (hasRealData && c.compliance_opinion)
+        ? (c.compliance_opinion as ClientObligationRow["opinion"])
+        : isOverdue
+        ? "Negativa"
+        : isRisk
+        ? "Pendiente"
+        : "Positiva";
+
+      const estatus: ClientObligationRow["estatus"] = (hasRealData && c.accounting_status)
+        ? (c.accounting_status as ClientObligationRow["estatus"])
+        : isCompleted
         ? "Completado"
         : isOverdue
         ? "Atrasado"
         : isRisk
         ? "En riesgo"
         : "En proceso";
-
-      const captura = isCompleted ? 100 : isProcess ? (index % 2 === 0 ? 80 : 60) : isRisk ? 40 : 15;
-      const calculo = isCompleted || (isProcess && captura >= 80);
-      const presentado = isCompleted;
-      const diot = isCompleted;
-      const ef = isCompleted;
-      const opinion: ClientObligationRow["opinion"] = isOverdue
-        ? "Negativa"
-        : isRisk
-        ? "Pendiente"
-        : "Positiva";
 
       const personaType = (c.person_type?.toLowerCase() === "física" || c.person_type?.toLowerCase() === "fisica")
         ? "Física"
@@ -154,8 +181,10 @@ export function ControlMensual() {
         economicActivity: c.economic_activity || "",
         contactPerson: c.contact_person || "",
         invoiceEmail: c.invoice_email || "",
-        notes: c.notes || "",
-        papeleria: captura > 0,
+        notes: c.accounting_notes || c.notes || "",
+        stationeryDate: c.stationery_date || undefined,
+        accountingPeriod: c.accounting_period || "Julio 2026",
+        papeleria,
         captura,
         calculo,
         presentado,
@@ -889,9 +918,13 @@ export function ControlMensual() {
                             <TableCell className="font-medium">1. Papelería y comprobantes</TableCell>
                             <TableCell>
                               {selectedClient.papeleria ? (
-                                <span className="text-emerald-600 font-medium">✓ Recibida</span>
+                                <span className="text-emerald-600 font-medium">
+                                  ✓ Recibida {selectedClient.stationeryDate ? `(${selectedClient.stationeryDate})` : ""}
+                                </span>
                               ) : (
-                                <span className="text-rose-600 font-medium">✕ Pendiente</span>
+                                <span className="text-rose-600 font-medium">
+                                  ✕ Pendiente {selectedClient.stationeryDate ? `(${selectedClient.stationeryDate})` : ""}
+                                </span>
                               )}
                             </TableCell>
                             <TableCell>{selectedClient.contador}</TableCell>
@@ -937,7 +970,18 @@ export function ControlMensual() {
                             <TableCell>{selectedClient.contador}</TableCell>
                           </TableRow>
                           <TableRow>
-                            <TableCell className="font-medium">6. Opinión de cumplimiento</TableCell>
+                            <TableCell className="font-medium">6. Estados Financieros</TableCell>
+                            <TableCell>
+                              {selectedClient.ef ? (
+                                <span className="text-emerald-600 font-medium">✓ Elaborados</span>
+                              ) : (
+                                <span className="text-muted-foreground">Pendiente</span>
+                              )}
+                            </TableCell>
+                            <TableCell>{selectedClient.contador}</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">7. Opinión de cumplimiento</TableCell>
                             <TableCell>{getOpinionBadge(selectedClient.opinion)}</TableCell>
                             <TableCell>{selectedClient.contador}</TableCell>
                           </TableRow>

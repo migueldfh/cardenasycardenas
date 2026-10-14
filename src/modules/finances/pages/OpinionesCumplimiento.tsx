@@ -43,7 +43,9 @@ export function OpinionesCumplimiento() {
     return rawClients.map((c, index) => {
       const isNegativa = index % 17 === 0;
       const isPendiente = index % 11 === 0 && !isNegativa;
-      const status: "Positiva" | "Negativa" | "Pendiente" = isNegativa
+      const status: "Positiva" | "Negativa" | "Pendiente" = c.compliance_opinion
+        ? (c.compliance_opinion as "Positiva" | "Negativa" | "Pendiente")
+        : isNegativa
         ? "Negativa"
         : isPendiente
         ? "Pendiente"

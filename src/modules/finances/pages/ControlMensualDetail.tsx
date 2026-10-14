@@ -72,6 +72,7 @@ export function ControlMensualDetail() {
         progress: 100,
       };
     }
+    const hasReal = foundClient.accounting_capture_pct !== null && foundClient.accounting_capture_pct !== undefined;
     return {
       id: foundClient.id,
       name: foundClient.name,
@@ -86,93 +87,99 @@ export function ControlMensualDetail() {
       contactName: foundClient.contact_person || "—",
       ciec: foundClient.ciec || "",
       invoiceEmail: foundClient.invoice_email || "",
-      notes: foundClient.notes || "",
-      progress: 100,
+      notes: foundClient.accounting_notes || foundClient.notes || "",
+      progress: hasReal ? Number(foundClient.accounting_capture_pct) : 100,
+      period: foundClient.accounting_period || "Julio 2026",
+      complianceOpinion: foundClient.compliance_opinion || "Positiva",
+      accountingStatus: foundClient.accounting_status || "En proceso",
     };
   }, [foundClient, id, isLoading]);
 
-  const stages = [
-    {
-      num: 1,
-      name: "Papelería",
-      status: "Completado",
-      targetDate: "01 Sep 2026",
-      completedDate: "29 Ago 2026",
-      responsible: "Rodrigo",
-      comments: "Recibida completa",
-      docs: 3,
-    },
-    {
-      num: 2,
-      name: "Captura contable",
-      status: "Completado",
-      targetDate: "05 Sep 2026",
-      completedDate: "03 Sep 2026",
-      responsible: "Rodrigo",
-      comments: "Sin observaciones",
-      docs: 2,
-    },
-    {
-      num: 3,
-      name: "Cálculo de impuestos",
-      status: "Completado",
-      targetDate: "08 Sep 2026",
-      completedDate: "07 Sep 2026",
-      responsible: "Rodrigo",
-      comments: "ISR e IVA calculados",
-      docs: 2,
-    },
-    {
-      num: 4,
-      name: "Revisión",
-      status: "Completado",
-      targetDate: "08 Sep 2026",
-      completedDate: "07 Sep 2026",
-      responsible: "Alejandra",
-      comments: "Revisado y validado",
-      docs: 1,
-    },
-    {
-      num: 5,
-      name: "Presentación",
-      status: "Completado",
-      targetDate: "10 Sep 2026",
-      completedDate: "08 Sep 2026",
-      responsible: "Rodrigo",
-      comments: "Acuses en sistema",
-      docs: 4,
-    },
-    {
-      num: 6,
-      name: "DIOT",
-      status: "Completado",
-      targetDate: "12 Sep 2026",
-      completedDate: "11 Sep 2026",
-      responsible: "Rodrigo",
-      comments: "Presentada",
-      docs: 1,
-    },
-    {
-      num: 7,
-      name: "Estados financieros",
-      status: "Completado",
-      targetDate: "12 Sep 2026",
-      completedDate: "11 Sep 2026",
-      responsible: "Rodrigo",
-      comments: "Enviados al cliente",
-      docs: 2,
-    },
-    {
-      num: 8,
-      name: "Opinión de cumplimiento",
-      status: "Completado",
-      targetDate: "15 Sep 2026",
-      completedDate: "12 Sep 2026",
-      responsible: "Rodrigo",
-      comments: "Positiva",
-      docs: 1,
-    },
-  ];
+  const stages = useMemo(() => {
+    const accountant = clientData.accountant || "Sin asignar";
+    const hasReal = foundClient?.accounting_capture_pct !== null && foundClient?.accounting_capture_pct !== undefined;
+
+    const papeleriaRecibida = hasReal ? Boolean(foundClient?.stationery_received) : true;
+    const capturaPct = hasReal ? Number(foundClient?.accounting_capture_pct) : 100;
+    const calculoListo = hasReal ? Boolean(foundClient?.tax_calculation) : true;
+    const presentadoListo = hasReal ? Boolean(foundClient?.tax_presented) : true;
+    const diotListo = hasReal ? Boolean(foundClient?.diot_presented) : false;
+    const efListo = hasReal ? Boolean(foundClient?.financial_statements) : false;
+    const opinionStatus = hasReal ? (foundClient?.compliance_opinion || "Positiva") : "Positiva";
+
+    return [
+      {
+        num: 1,
+        name: "Papelería",
+        status: papeleriaRecibida ? "Completado" : "Pendiente",
+        targetDate: "05 Ago 2026",
+        completedDate: foundClient?.stationery_date ? (foundClient.stationery_date === "CEROS" ? "Ceros" : foundClient.stationery_date === "pte" ? "Pendiente" : foundClient.stationery_date === "N/A" ? "N/A" : foundClient.stationery_date) : (papeleriaRecibida ? "Recibida" : "—"),
+        responsible: accountant,
+        comments: foundClient?.stationery_date ? `Estatus: ${foundClient.stationery_date}` : (papeleriaRecibida ? "Recibida completa" : "Pendiente de recepción"),
+        docs: papeleriaRecibida ? 3 : 0,
+      },
+      {
+        num: 2,
+        name: "Captura contable",
+        status: capturaPct === 100 ? "Completado" : capturaPct > 0 ? "En proceso" : "Pendiente",
+        targetDate: "10 Ago 2026",
+        completedDate: capturaPct === 100 ? "Completada" : "—",
+        responsible: accountant,
+        comments: `Avance de captura: ${capturaPct}%`,
+        docs: capturaPct > 0 ? 2 : 0,
+      },
+      {
+        num: 3,
+        name: "Cálculo de impuestos",
+        status: calculoListo ? "Completado" : "Pendiente",
+        targetDate: "14 Ago 2026",
+        completedDate: calculoListo ? "Calculado" : "—",
+        responsible: accountant,
+        comments: calculoListo ? "ISR e IVA calculados" : "En espera de cálculo",
+        docs: calculoListo ? 2 : 0,
+      },
+      {
+        num: 4,
+        name: "Presentación SAT",
+        status: presentadoListo ? "Completado" : "Pendiente",
+        targetDate: "17 Ago 2026",
+        completedDate: presentadoListo ? "Presentado" : "—",
+        responsible: accountant,
+        comments: presentadoListo ? "Declaración presentada ante el SAT" : "Pendiente de presentación",
+        docs: presentadoListo ? 1 : 0,
+      },
+      {
+        num: 5,
+        name: "DIOT",
+        status: diotListo ? "Completado" : "Pendiente",
+        targetDate: "20 Ago 2026",
+        completedDate: diotListo ? "Presentada" : "—",
+        responsible: accountant,
+        comments: diotListo ? "Declaración Informativa enviada" : "Pendiente",
+        docs: diotListo ? 1 : 0,
+      },
+      {
+        num: 6,
+        name: "Estados financieros",
+        status: efListo ? "Completado" : "Pendiente",
+        targetDate: "25 Ago 2026",
+        completedDate: efListo ? "Generados" : "—",
+        responsible: accountant,
+        comments: efListo ? "Estados financieros mensuales emitidos" : "Pendiente",
+        docs: efListo ? 2 : 0,
+      },
+      {
+        num: 7,
+        name: "Opinión de cumplimiento",
+        status: opinionStatus === "Positiva" ? "Completado" : opinionStatus === "Negativa" ? "En riesgo" : "Pendiente",
+        targetDate: "30 Ago 2026",
+        completedDate: opinionStatus === "Positiva" ? "Positiva" : "—",
+        responsible: accountant,
+        comments: `Opinión SAT: ${opinionStatus}`,
+        docs: 1,
+      },
+    ];
+  }, [foundClient, clientData]);
 
   const activityHistory = [
     {
