@@ -22,7 +22,11 @@ export async function fetchFinanceClients(): Promise<IFinanceClient[]> {
     .order('name');
 
   if (error) throw new Error(error.message);
-  return data as IFinanceClient[];
+  return ((data || []) as any[]).map((c) => ({
+    ...c,
+    rfc: c.tax_id_rfc || c.rfc || '',
+    tax_regime: c.fiscal_regime || c.tax_regime || '',
+  })) as IFinanceClient[];
 }
 
 export async function createFinanceClient(payload: {
@@ -33,6 +37,14 @@ export async function createFinanceClient(payload: {
   phone?: string | null;
   tax_id_rfc?: string | null;
   fiscal_regime?: string | null;
+  ciec?: string | null;
+  economic_activity?: string | null;
+  invoice_email?: string | null;
+  contact_person?: string | null;
+  assigned_accountant?: string | null;
+  notes?: string | null;
+  person_type?: string | null;
+  status?: string | null;
 }): Promise<IFinanceClient> {
   const { data, error } = await supabase
     .from('clients')
@@ -50,6 +62,56 @@ export async function createFinanceClient(payload: {
 
   return client;
 }
+
+export async function updateFinanceClient(
+  id: string,
+  payload: {
+    name?: string;
+    trade_name?: string | null;
+    fiscal_name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    tax_id_rfc?: string | null;
+    fiscal_regime?: string | null;
+    ciec?: string | null;
+    economic_activity?: string | null;
+    invoice_email?: string | null;
+    contact_person?: string | null;
+    assigned_accountant?: string | null;
+    notes?: string | null;
+    person_type?: string | null;
+    status?: string | null;
+  }
+): Promise<IFinanceClient> {
+  const { data, error } = await supabase
+    .from('clients')
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  const client = data as IFinanceClient;
+  logActivity('UPDATE_CLIENT', {
+    clientId: client.id,
+    name: client.name,
+  });
+
+  return client;
+}
+
+export async function deleteFinanceClient(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('clients')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
+
+  logActivity('DELETE_CLIENT', { clientId: id });
+}
+
 
 
 

@@ -427,6 +427,14 @@ export async function createClient(payload: {
   phone?: string | null;
   tax_id_rfc?: string | null;
   fiscal_regime?: string | null;
+  ciec?: string | null;
+  economic_activity?: string | null;
+  invoice_email?: string | null;
+  contact_person?: string | null;
+  assigned_accountant?: string | null;
+  notes?: string | null;
+  person_type?: string | null;
+  status?: string | null;
 }): Promise<IClient> {
   const { data, error } = await supabase
     .from('clients')
@@ -449,6 +457,14 @@ export async function updateClient(
     phone?: string | null;
     tax_id_rfc?: string | null;
     fiscal_regime?: string | null;
+    ciec?: string | null;
+    economic_activity?: string | null;
+    invoice_email?: string | null;
+    contact_person?: string | null;
+    assigned_accountant?: string | null;
+    notes?: string | null;
+    person_type?: string | null;
+    status?: string | null;
   }
 ): Promise<IClient> {
   const { data, error } = await supabase

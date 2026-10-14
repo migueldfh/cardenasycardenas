@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,28 +36,62 @@ import {
   Building2,
   User,
   ArrowRight,
+  Eye,
+  EyeOff,
+  Copy,
+  Key,
 } from "lucide-react";
 import { sileo } from "sileo";
+import { useFinanceClients } from "../hooks";
 
 export function ControlMensualDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { data: clients = [], isLoading } = useFinanceClients();
+  const [showCiec, setShowCiec] = useState(false);
 
-  // Mock data representing Solupatch S.A. de C.V. (matching Image 3)
-  const [clientData] = useState({
-    id: id || "1",
-    name: "Solupatch S.A. de C.V.",
-    rfc: "SOL220101ABC",
-    personType: "Persona Moral",
-    regime: "PM General",
-    accountant: "Rodrigo",
-    email: "contacto@solupatch.com",
-    phone: "81 1234 5678",
-    status: "Completado",
-    economicActivity: "Fabricación de productos químicos",
-    contactName: "Lic. Juan Pérez",
-    progress: 100,
-  });
+  const foundClient = useMemo(() => {
+    return clients.find((c) => c.id === id);
+  }, [clients, id]);
+
+  const clientData = useMemo(() => {
+    if (!foundClient) {
+      return {
+        id: id || "1",
+        name: isLoading ? "Cargando cliente..." : "Cliente",
+        rfc: "—",
+        personType: "Persona Moral",
+        regime: "—",
+        accountant: "Sin asignar",
+        email: "—",
+        phone: "—",
+        status: "Activo",
+        economicActivity: "—",
+        contactName: "—",
+        ciec: "",
+        invoiceEmail: "",
+        notes: "",
+        progress: 100,
+      };
+    }
+    return {
+      id: foundClient.id,
+      name: foundClient.name,
+      rfc: foundClient.rfc || "—",
+      personType: foundClient.person_type ? `Persona ${foundClient.person_type}` : "Persona Moral",
+      regime: foundClient.tax_regime || "General de Ley",
+      accountant: foundClient.assigned_accountant || "Sin asignar",
+      email: foundClient.email || foundClient.invoice_email || "—",
+      phone: foundClient.phone || "—",
+      status: foundClient.status || "Activo",
+      economicActivity: foundClient.economic_activity || "—",
+      contactName: foundClient.contact_person || "—",
+      ciec: foundClient.ciec || "",
+      invoiceEmail: foundClient.invoice_email || "",
+      notes: foundClient.notes || "",
+      progress: 100,
+    };
+  }, [foundClient, id, isLoading]);
 
   const stages = [
     {
@@ -341,12 +375,68 @@ export function ControlMensualDetail() {
                 className="w-full text-xs text-primary font-semibold flex items-center justify-center gap-1 h-full"
                 asChild
               >
-                <Link to="/clients">
+                <Link to={clientData.id ? `/clients/${clientData.id}` : "/clients"}>
                   Ver ficha completa <ArrowRight className="h-3.5 w-3.5 ml-1" />
                 </Link>
               </Button>
             </Card>
           </div>
+
+          {/* Secondary Fiscal & SAT Credentials Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 p-3 bg-muted/20 rounded-lg border text-xs">
+            <div className="flex items-center gap-2">
+              <Key className="h-4 w-4 text-primary shrink-0" />
+              <div>
+                <span className="text-[10px] text-muted-foreground block">Contraseña SAT / CIEC</span>
+                <div className="flex items-center gap-1 font-mono font-semibold text-foreground">
+                  <span>{showCiec ? (clientData.ciec || "—") : "••••••••"}</span>
+                  {clientData.ciec && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setShowCiec(!showCiec)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        {showCiec ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(clientData.ciec);
+                          sileo.success({ title: "CIEC copiado al portapapeles" });
+                        }}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <span className="text-[10px] text-muted-foreground block">Correo Facturación</span>
+              <span className="font-semibold text-foreground truncate block">{clientData.invoiceEmail || "—"}</span>
+            </div>
+
+            <div>
+              <span className="text-[10px] text-muted-foreground block">Encargado / Contacto</span>
+              <span className="font-semibold text-foreground truncate block">{clientData.contactName || "—"}</span>
+            </div>
+
+            <div>
+              <span className="text-[10px] text-muted-foreground block">Actividad Económica</span>
+              <span className="font-semibold text-foreground truncate block">{clientData.economicActivity || "—"}</span>
+            </div>
+          </div>
+
+          {clientData.notes && (
+            <div className="p-3 bg-amber-50/50 border border-amber-200/50 rounded-lg text-xs">
+              <span className="text-[10px] text-amber-800 block font-medium">Observaciones del Cliente</span>
+              <p className="text-amber-900 mt-0.5">{clientData.notes}</p>
+            </div>
+          )}
 
           {/* Main 2-Column Content (Image 3) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

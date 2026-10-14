@@ -85,13 +85,23 @@ export interface IClient {
   email?: string | null;
   phone?: string | null;
   tax_id_rfc?: string | null;
+  rfc?: string | null;
   fiscal_regime?: string | null;
+  tax_regime?: string | null;
   token: string;
   created_at: string;
   updated_at?: string;
   product_count?: number;
   total_paid?: number;
   total_debt?: number;
+  ciec?: string | null;
+  economic_activity?: string | null;
+  invoice_email?: string | null;
+  contact_person?: string | null;
+  assigned_accountant?: string | null;
+  notes?: string | null;
+  person_type?: string | null;
+  status?: string | null;
 }
 
 export interface IClientProduct {

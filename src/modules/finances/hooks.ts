@@ -49,6 +49,27 @@ export function useCreateFinanceClient() {
   });
 }
 
+export function useUpdateFinanceClient() {
+  const queryClient = useQueryClient();
+  return useMutation<IFinanceClient, Error, { id: string; payload: Parameters<typeof api.updateFinanceClient>[1] }>({
+    mutationFn: ({ id, payload }) => api.updateFinanceClient(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: FINANCE_KEYS.clients() });
+    },
+  });
+}
+
+export function useDeleteFinanceClient() {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: (id: string) => api.deleteFinanceClient(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: FINANCE_KEYS.clients() });
+    },
+  });
+}
+
+
 
 // ─── Projects Hooks ─────────────────────────────────────────────────
 

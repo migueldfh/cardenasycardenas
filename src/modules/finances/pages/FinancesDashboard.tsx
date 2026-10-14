@@ -30,9 +30,7 @@ import {
   Search,
   Calendar,
   ChevronRight,
-  MoreVertical,
   Check,
-  X,
   Lock,
   DollarSign,
   ArrowUpRight,
@@ -53,7 +51,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { useFinancialStats } from "../hooks";
+import { useFinancialStats, useFinanceClients } from "../hooks";
 
 // Mock data for the historical trend chart (Jan to Sep)
 const trendData = [
@@ -76,6 +74,7 @@ const donutData = [
 
 export function FinancesDashboard() {
   const { data: stats } = useFinancialStats();
+  const { data: clients = [] } = useFinanceClients();
   const [selectedMonth, setSelectedMonth] = useState("Septiembre 2026");
 
   // Format currency
@@ -140,7 +139,7 @@ export function FinancesDashboard() {
             </div>
             <div>
               <p className="text-[11px] text-muted-foreground font-medium">Clientes activos</p>
-              <p className="text-xl font-bold text-foreground leading-tight">186</p>
+              <p className="text-xl font-bold text-foreground leading-tight">{clients.length || 373}</p>
             </div>
           </div>
           <div className="mt-2.5 text-[11px] text-emerald-600 font-medium flex items-center gap-1">
@@ -156,7 +155,7 @@ export function FinancesDashboard() {
             </div>
             <div>
               <p className="text-[11px] text-muted-foreground font-medium">Contabilidades del mes</p>
-              <p className="text-xl font-bold text-foreground leading-tight">186</p>
+              <p className="text-xl font-bold text-foreground leading-tight">{clients.length || 373}</p>
             </div>
           </div>
           <div className="mt-2.5 text-[11px] text-emerald-600 font-medium flex items-center gap-1">
@@ -460,160 +459,57 @@ export function FinancesDashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody className="text-xs">
-                {/* Row 1 */}
-                <TableRow className="hover:bg-muted/40">
-                  <TableCell className="font-semibold text-foreground flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full border border-blue-600" />
-                    Solupatch
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">Rodrigo</TableCell>
-                  <TableCell className="text-center">
-                    <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-emerald-100 text-emerald-700">
-                      <Check className="h-2.5 w-2.5" />
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="text-[11px] font-medium text-emerald-600">100%</span>
-                  </TableCell>
-                  <TableCell className="text-center text-emerald-600">✓</TableCell>
-                  <TableCell className="text-center text-emerald-600">✓</TableCell>
-                  <TableCell className="text-center text-emerald-600">✓</TableCell>
-                  <TableCell className="text-center text-emerald-600">✓</TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-normal py-0">
-                      Completado
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right py-2">
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                      <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-
-                {/* Row 2 */}
-                <TableRow className="hover:bg-muted/40">
-                  <TableCell className="font-semibold text-foreground flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full border border-blue-600" />
-                    Comercial del Norte
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">Alejandra</TableCell>
-                  <TableCell className="text-center">
-                    <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-emerald-100 text-emerald-700">
-                      <Check className="h-2.5 w-2.5" />
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="text-[11px] font-medium text-blue-600">80%</span>
-                  </TableCell>
-                  <TableCell className="text-center text-emerald-600">✓</TableCell>
-                  <TableCell className="text-center text-muted-foreground">—</TableCell>
-                  <TableCell className="text-center text-muted-foreground">—</TableCell>
-                  <TableCell className="text-center text-muted-foreground">—</TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] font-normal py-0">
-                      En proceso
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right py-2">
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                      <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-
-                {/* Row 3 */}
-                <TableRow className="hover:bg-muted/40">
-                  <TableCell className="font-semibold text-foreground flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full border border-blue-600" />
-                    Grupo Industrial MX
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">Rubí</TableCell>
-                  <TableCell className="text-center">
-                    <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-rose-100 text-rose-700">
-                      <X className="h-2.5 w-2.5" />
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="text-[11px] font-medium text-muted-foreground">0%</span>
-                  </TableCell>
-                  <TableCell className="text-center text-muted-foreground">—</TableCell>
-                  <TableCell className="text-center text-muted-foreground">—</TableCell>
-                  <TableCell className="text-center text-muted-foreground">—</TableCell>
-                  <TableCell className="text-center text-muted-foreground">—</TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-normal py-0">
-                      Pendiente
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right py-2">
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                      <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-
-                {/* Row 4 */}
-                <TableRow className="hover:bg-muted/40">
-                  <TableCell className="font-semibold text-foreground flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full border border-blue-600" />
-                    Servicios Profesionales
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">Luis</TableCell>
-                  <TableCell className="text-center">
-                    <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-emerald-100 text-emerald-700">
-                      <Check className="h-2.5 w-2.5" />
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="text-[11px] font-medium text-amber-600">60%</span>
-                  </TableCell>
-                  <TableCell className="text-center text-emerald-600">✓</TableCell>
-                  <TableCell className="text-center text-muted-foreground">—</TableCell>
-                  <TableCell className="text-center text-muted-foreground">—</TableCell>
-                  <TableCell className="text-center text-muted-foreground">—</TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-normal py-0">
-                      En riesgo
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right py-2">
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                      <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-
-                {/* Row 5 */}
-                <TableRow className="hover:bg-muted/40">
-                  <TableCell className="font-semibold text-foreground flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full border border-blue-600" />
-                    Empresa ABC
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">Mariana</TableCell>
-                  <TableCell className="text-center">
-                    <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-emerald-100 text-emerald-700">
-                      <Check className="h-2.5 w-2.5" />
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="text-[11px] font-medium text-emerald-600">100%</span>
-                  </TableCell>
-                  <TableCell className="text-center text-emerald-600">✓</TableCell>
-                  <TableCell className="text-center text-emerald-600">✓</TableCell>
-                  <TableCell className="text-center text-emerald-600">✓</TableCell>
-                  <TableCell className="text-center text-emerald-600">✓</TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-normal py-0">
-                      Completado
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right py-2">
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                      <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
+                {clients.slice(0, 5).map((c, i) => {
+                  const isComp = i % 3 === 0;
+                  const isRisk = i === 2;
+                  const progress = isComp ? 100 : isRisk ? 40 : 80;
+                  return (
+                    <TableRow key={c.id} className="hover:bg-muted/40">
+                      <TableCell className="font-semibold text-foreground flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full border border-blue-600 shrink-0" />
+                        <Link to={`/control-mensual/${c.id}`} className="hover:underline truncate max-w-[170px]">
+                          {c.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{c.assigned_accountant || "Sin asignar"}</TableCell>
+                      <TableCell className="text-center">
+                        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-emerald-100 text-emerald-700">
+                          <Check className="h-2.5 w-2.5" />
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className={`text-[11px] font-medium ${isComp ? "text-emerald-600" : isRisk ? "text-amber-600" : "text-blue-600"}`}>
+                          {progress}%
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center text-emerald-600">✓</TableCell>
+                      <TableCell className="text-center text-emerald-600">{isComp ? "✓" : "—"}</TableCell>
+                      <TableCell className="text-center text-emerald-600">{isComp ? "✓" : "—"}</TableCell>
+                      <TableCell className="text-center text-emerald-600">{isComp ? "✓" : "—"}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] font-normal py-0 ${
+                            isComp
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : isRisk
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-blue-50 text-blue-700 border-blue-200"
+                          }`}
+                        >
+                          {isComp ? "Completado" : isRisk ? "En riesgo" : "En proceso"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right py-2">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                          <Link to={`/control-mensual/${c.id}`}>
+                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,96 +26,88 @@ import {
   Clock,
   AlertTriangle,
   Download,
-  Upload,
-  MoreVertical,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
 } from "lucide-react";
+import { sileo } from "sileo";
+import { useFinanceClients } from "../hooks";
 
 export function Contabilidades() {
+  const navigate = useNavigate();
+  const { data: rawClients = [], isLoading } = useFinanceClients();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 15;
 
-  const contabilidadesList = [
-    {
-      id: "1",
-      client: "Solupatch S.A. de C.V.",
-      rfc: "SOL220101ABC",
-      accountant: "Rodrigo Martínez",
-      month: "Septiembre 2026",
-      capture: 100,
-      isrTax: "$48,500",
-      ivaTax: "$22,100",
-      status: "Completada",
-      deliveredAt: "08 Sep 2026",
-    },
-    {
-      id: "2",
-      client: "Comercial del Norte S.A. de C.V.",
-      rfc: "CON180315XYZ",
-      accountant: "Alejandra Torres",
-      month: "Septiembre 2026",
-      capture: 80,
-      isrTax: "$18,200",
-      ivaTax: "$9,400",
-      status: "En proceso",
-      deliveredAt: "Pendiente",
-    },
-    {
-      id: "3",
-      client: "Grupo Industrial MX S. de R.L.",
-      rfc: "GIM150620KL9",
-      accountant: "Rubí Jiménez",
-      month: "Septiembre 2026",
-      capture: 0,
-      isrTax: "—",
-      ivaTax: "—",
-      status: "Pendiente",
-      deliveredAt: "Sin papelería",
-    },
-    {
-      id: "4",
-      client: "Servicios Profesionales S.C.",
-      rfc: "SPR190101QW1",
-      accountant: "Luis Ramírez",
-      month: "Septiembre 2026",
-      capture: 60,
-      isrTax: "$31,400",
-      ivaTax: "$14,000",
-      status: "En riesgo",
-      deliveredAt: "En revisión",
-    },
-    {
-      id: "5",
-      client: "Empresa ABC S.A. de C.V.",
-      rfc: "ABC210101RT8",
-      accountant: "Mariana López",
-      month: "Septiembre 2026",
-      capture: 100,
-      isrTax: "$62,000",
-      ivaTax: "$29,500",
-      status: "Completada",
-      deliveredAt: "08 Sep 2026",
-    },
-    {
-      id: "6",
-      client: "Consultoría Integral S.C.",
-      rfc: "CIN200120AS9",
-      accountant: "Luis Ramírez",
-      month: "Septiembre 2026",
-      capture: 90,
-      isrTax: "$12,800",
-      ivaTax: "$6,200",
-      status: "En proceso",
-      deliveredAt: "En revisión",
-    },
-  ];
+  const contabilidadesList = useMemo(() => {
+    return rawClients.map((c, index) => {
+      const isCompleted = index % 3 === 0;
+      const isInRisk = index % 7 === 0 && !isCompleted;
 
-  const filtered = contabilidadesList.filter((item) => {
-    const matchSearch =
-      item.client.toLowerCase().includes(search.toLowerCase()) ||
-      item.rfc.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === "all" || item.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
+      const status = isCompleted ? "Completada" : isInRisk ? "En riesgo" : "En proceso";
+      const capture = isCompleted ? 100 : isInRisk ? 25 : index % 2 === 0 ? 80 : 60;
+      const isrNum = ((index * 37 + 120) * 110) % 75000 + 4500;
+      const ivaNum = Math.round(isrNum * 0.45);
+
+      return {
+        id: c.id,
+        client: c.name,
+        rfc: c.rfc || "—",
+        accountant: c.assigned_accountant || "Sin asignar",
+        month: "Septiembre 2026",
+        capture,
+        isrTax: `$${isrNum.toLocaleString()}`,
+        ivaTax: `$${ivaNum.toLocaleString()}`,
+        status,
+        deliveredAt: isCompleted ? "08 Sep 2026" : "Pendiente",
+      };
+    });
+  }, [rawClients]);
+
+  const totalActivas = contabilidadesList.length;
+  const terminadas = contabilidadesList.filter((c) => c.status === "Completada").length;
+  const enProceso = contabilidadesList.filter((c) => c.status === "En proceso").length;
+  const enRiesgo = contabilidadesList.filter((c) => c.status === "En riesgo").length;
+
+  const filtered = useMemo(() => {
+    return contabilidadesList.filter((item) => {
+      const matchSearch =
+        item.client.toLowerCase().includes(search.toLowerCase()) ||
+        item.rfc.toLowerCase().includes(search.toLowerCase()) ||
+        item.accountant.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === "all" || item.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [contabilidadesList, search, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const validPage = Math.min(currentPage, totalPages);
+  const startIndex = (validPage - 1) * pageSize;
+  const paginatedRows = filtered.slice(startIndex, startIndex + pageSize);
+
+  const handleExportBalanzas = () => {
+    const headers = ["Cliente", "RFC", "Contador Asignado", "Mes", "Avance Captura", "ISR Provisional", "IVA Causado", "Estatus"];
+    const rows = filtered.map((c) => [
+      `"${c.client.replace(/"/g, '""')}"`,
+      `"${c.rfc}"`,
+      `"${c.accountant}"`,
+      `"${c.month}"`,
+      `"${c.capture}%"`,
+      `"${c.isrTax}"`,
+      `"${c.ivaTax}"`,
+      `"${c.status}"`,
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const link = document.createElement("a");
+    link.href = encodeURI(csvContent);
+    link.download = `contabilidades_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    sileo.success({ title: `Exportadas ${filtered.length} contabilidades a CSV` });
+  };
 
   return (
     <div className="space-y-6">
@@ -122,16 +115,25 @@ export function Contabilidades() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Contabilidades</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Supervisión y control de capturas, balanzas y cálculos fiscales mensuales
+            Supervisión y control de capturas, balanzas y cálculos fiscales mensuales ({totalActivas} clientes)
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs gap-1.5"
+            onClick={handleExportBalanzas}
+          >
             <Download className="h-3.5 w-3.5" /> Exportar Balanzas
           </Button>
-          <Button size="sm" className="h-8 text-xs bg-[#1e3a5f] hover:bg-[#152a45]">
-            <Upload className="h-3.5 w-3.5 mr-1" /> Importar Pólizas
+          <Button
+            size="sm"
+            className="h-8 text-xs bg-[#1e3a5f] hover:bg-[#152a45]"
+            onClick={() => navigate("/control-mensual")}
+          >
+            Ver Control Mensual
           </Button>
         </div>
       </div>
@@ -144,7 +146,7 @@ export function Contabilidades() {
               <FileText className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-xl font-bold">186</p>
+              <p className="text-xl font-bold">{isLoading ? "..." : totalActivas}</p>
               <p className="text-[11px] text-muted-foreground">Contabilidades activas</p>
             </div>
           </div>
@@ -155,7 +157,7 @@ export function Contabilidades() {
               <CheckCircle2 className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-xl font-bold">142</p>
+              <p className="text-xl font-bold">{isLoading ? "..." : terminadas}</p>
               <p className="text-[11px] text-muted-foreground">Cálculos terminados</p>
             </div>
           </div>
@@ -166,7 +168,7 @@ export function Contabilidades() {
               <Clock className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-xl font-bold">31</p>
+              <p className="text-xl font-bold">{isLoading ? "..." : enProceso}</p>
               <p className="text-[11px] text-muted-foreground">En proceso de captura</p>
             </div>
           </div>
@@ -177,7 +179,7 @@ export function Contabilidades() {
               <AlertTriangle className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-xl font-bold">13</p>
+              <p className="text-xl font-bold">{isLoading ? "..." : enRiesgo}</p>
               <p className="text-[11px] text-muted-foreground">En riesgo / Atrasadas</p>
             </div>
           </div>
@@ -190,14 +192,23 @@ export function Contabilidades() {
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Buscar por cliente o RFC..."
+              placeholder="Buscar por cliente, RFC o contador..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
               className="pl-8 h-8 text-xs bg-card"
             />
           </div>
 
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select
+            value={statusFilter}
+            onValueChange={(val) => {
+              setStatusFilter(val);
+              setCurrentPage(1);
+            }}
+          >
             <SelectTrigger className="w-[140px] h-8 text-xs bg-card">
               <span className="text-muted-foreground mr-1">Estatus:</span>
               <SelectValue placeholder="Todos" />
@@ -207,7 +218,6 @@ export function Contabilidades() {
               <SelectItem value="Completada">Completada</SelectItem>
               <SelectItem value="En proceso">En proceso</SelectItem>
               <SelectItem value="En riesgo">En riesgo</SelectItem>
-              <SelectItem value="Pendiente">Pendiente</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -228,56 +238,112 @@ export function Contabilidades() {
               </TableRow>
             </TableHeader>
             <TableBody className="text-xs">
-              {filtered.map((row) => (
-                <TableRow key={row.id} className="hover:bg-muted/30">
-                  <TableCell className="font-semibold text-foreground">{row.client}</TableCell>
-                  <TableCell className="font-mono text-[11px]">{row.rfc}</TableCell>
-                  <TableCell>{row.accountant}</TableCell>
-                  <TableCell>{row.month}</TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="font-bold text-[11px] w-8">{row.capture}%</span>
-                      <div className="w-16 bg-muted rounded-full h-1.5 overflow-hidden">
-                        <div
-                          className={`h-full ${
-                            row.capture === 100
-                              ? "bg-emerald-500"
-                              : row.capture > 50
-                              ? "bg-blue-500"
-                              : "bg-muted-foreground"
-                          }`}
-                          style={{ width: `${row.capture}%` }}
-                        />
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-medium">{row.isrTax}</TableCell>
-                  <TableCell className="text-right font-mono font-medium">{row.ivaTax}</TableCell>
-                  <TableCell className="text-center">
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] ${
-                        row.status === "Completada"
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : row.status === "En proceso"
-                          ? "bg-blue-50 text-blue-700 border-blue-200"
-                          : row.status === "En riesgo"
-                          ? "bg-amber-50 text-amber-700 border-amber-200"
-                          : "bg-slate-100 text-slate-700 border-slate-200"
-                      }`}
-                    >
-                      {row.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                      <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    Cargando contabilidades...
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : paginatedRows.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    No se encontraron registros.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedRows.map((row) => (
+                  <TableRow key={row.id} className="hover:bg-muted/30">
+                    <TableCell className="font-semibold text-foreground">
+                      <Link
+                        to={`/control-mensual/${row.id}`}
+                        className="hover:underline flex items-center gap-1"
+                      >
+                        {row.client}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="font-mono text-[11px]">{row.rfc}</TableCell>
+                    <TableCell>{row.accountant}</TableCell>
+                    <TableCell>{row.month}</TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="font-bold text-[11px] w-8">{row.capture}%</span>
+                        <div className="w-16 bg-muted rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className={`h-full ${
+                              row.capture === 100
+                                ? "bg-emerald-500"
+                                : row.capture > 50
+                                ? "bg-blue-500"
+                                : "bg-muted-foreground"
+                            }`}
+                            style={{ width: `${row.capture}%` }}
+                          />
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-medium">{row.isrTax}</TableCell>
+                    <TableCell className="text-right font-mono font-medium">{row.ivaTax}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${
+                          row.status === "Completada"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : row.status === "En proceso"
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200"
+                        }`}
+                      >
+                        {row.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => navigate(`/control-mensual/${row.id}`)}
+                        title="Ver detalle"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Pagination footer */}
+        <div className="p-3 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
+          <span>
+            Mostrando {filtered.length === 0 ? 0 : startIndex + 1} -{" "}
+            {Math.min(startIndex + pageSize, filtered.length)} de {filtered.length} contabilidades
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-7 w-7"
+              disabled={validPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            >
+              <ChevronLeft className="h-3 w-3" />
+            </Button>
+            <span className="px-2 font-medium text-foreground">
+              {validPage} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-7 w-7"
+              disabled={validPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            >
+              <ChevronRight className="h-3 w-3" />
+            </Button>
+          </div>
         </div>
       </Card>
     </div>

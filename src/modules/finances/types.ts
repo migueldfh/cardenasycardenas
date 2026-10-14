@@ -6,10 +6,20 @@ export interface IFinanceClient {
   email?: string | null;
   phone?: string | null;
   tax_id_rfc?: string | null;
+  rfc?: string | null;
   fiscal_regime?: string | null;
+  tax_regime?: string | null;
   token: string;
   created_at: string;
   updated_at?: string;
+  ciec?: string | null;
+  economic_activity?: string | null;
+  invoice_email?: string | null;
+  contact_person?: string | null;
+  assigned_accountant?: string | null;
+  notes?: string | null;
+  person_type?: string | null;
+  status?: string | null;
 }
 
 export type DecretoProcessStage =

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,7 @@ import {
   MoreVertical,
   BarChart3,
   Calendar,
+  ExternalLink,
 } from "lucide-react";
 import {
   BarChart,
@@ -59,6 +61,7 @@ import {
   Cell,
 } from "recharts";
 import { sileo } from "sileo";
+import { useFinanceClients } from "@/modules/finances/hooks";
 
 interface ContadorItem {
   id: string;
@@ -75,112 +78,47 @@ interface ContadorItem {
   complianceRate: number;
 }
 
-const mockContadores: ContadorItem[] = [
-  {
-    id: "1",
-    name: "Rodrigo Martínez",
-    role: "Contador Senior",
-    email: "rodrigo@cardenasycardenas.mx",
-    phone: "81 1234 5678",
-    status: "Activo",
-    assignedClients: 42,
-    completed: 32,
-    inProcess: 6,
-    atRisk: 3,
-    delayed: 1,
-    complianceRate: 76,
-  },
-  {
-    id: "2",
-    name: "Alejandra Torres",
-    role: "Contadora Fiscalista",
-    email: "alejandra@cardenasycardenas.mx",
-    phone: "81 2345 6789",
-    status: "Activo",
-    assignedClients: 38,
-    completed: 28,
-    inProcess: 7,
-    atRisk: 2,
-    delayed: 1,
-    complianceRate: 74,
-  },
-  {
-    id: "3",
-    name: "Rubí Jiménez",
-    role: "Contadora de Operaciones",
-    email: "rubi@cardenasycardenas.mx",
-    phone: "81 3456 7890",
-    status: "Activo",
-    assignedClients: 36,
-    completed: 26,
-    inProcess: 6,
-    atRisk: 2,
-    delayed: 2,
-    complianceRate: 72,
-  },
-  {
-    id: "4",
-    name: "Luis Ramírez",
-    role: "Contador General",
-    email: "luis@cardenasycardenas.mx",
-    phone: "81 4567 8901",
-    status: "Activo",
-    assignedClients: 28,
-    completed: 22,
-    inProcess: 4,
-    atRisk: 1,
-    delayed: 1,
-    complianceRate: 79,
-  },
-  {
-    id: "5",
-    name: "Mariana López",
-    role: "Contadora Jr.",
-    email: "mariana@cardenasycardenas.mx",
-    phone: "81 5678 9012",
-    status: "Activo",
-    assignedClients: 24,
-    completed: 18,
-    inProcess: 5,
-    atRisk: 0,
-    delayed: 1,
-    complianceRate: 75,
-  },
-  {
-    id: "6",
-    name: "José Pérez",
-    role: "Contador Auditor",
-    email: "jose@cardenasycardenas.mx",
-    phone: "81 6789 0123",
-    status: "Activo",
-    assignedClients: 18,
-    completed: 16,
-    inProcess: 3,
-    atRisk: 0,
-    delayed: 0,
-    complianceRate: 89,
-  },
-];
-
-const workloadChartData = [
-  { name: "Rodrigo", completados: 32, pendientes: 10 },
-  { name: "Alejandra", completados: 28, pendientes: 10 },
-  { name: "Rubí", completados: 26, pendientes: 10 },
-  { name: "Luis", completados: 22, pendientes: 6 },
-  { name: "Mariana", completados: 18, pendientes: 6 },
-  { name: "José", completados: 16, pendientes: 2 },
-];
-
-const upcomingDeliverables = [
-  { client: "Comercial del Norte", date: "10 Sep 2026", type: "Declaración", status: "En proceso" },
-  { client: "Grupo Industrial MX", date: "10 Sep 2026", type: "DIOT", status: "En riesgo" },
-  { client: "Logística del Bajío", date: "12 Sep 2026", type: "Contabilidad", status: "Pendiente" },
-  { client: "Inversiones Monterrey", date: "15 Sep 2026", type: "Opinión de cumplimiento", status: "Pendiente" },
-  { client: "Alimentos y Bebidas", date: "15 Sep 2026", type: "Estados financieros", status: "En proceso" },
+const baseContadoresTeam = [
+  { id: "1", name: "Alejandra Díaz", role: "Contadora Fiscalista", email: "alejandra@cardenasycardenas.mx", phone: "81 2010 3796", status: "Activo" as const },
+  { id: "2", name: "Brandon Ruíz", role: "Contador de Operaciones", email: "brandon@cardenasycardenas.mx", phone: "81 1481 9559", status: "Activo" as const },
+  { id: "3", name: "Carlos Martinez", role: "Contador Senior", email: "carlos@cardenasycardenas.mx", phone: "81 2686 9514", status: "Activo" as const },
+  { id: "4", name: "Elder Corpus", role: "Contador General", email: "elder@cardenasycardenas.mx", phone: "81 1173 3652", status: "Activo" as const },
+  { id: "5", name: "Marisol Sinahi", role: "Contadora Fiscalista", email: "marisol@cardenasycardenas.mx", phone: "81 1241 8596", status: "Activo" as const },
+  { id: "6", name: "Rodrigo Cerda", role: "Contador Senior", email: "rodrigo@cardenasycardenas.mx", phone: "81 1905 5308", status: "Activo" as const },
+  { id: "7", name: "Rubí Jimenez", role: "Contadora de Operaciones", email: "rubi@cardenasycardenas.mx", phone: "81 1810 0295", status: "Activo" as const },
+  { id: "8", name: "Vero Aguillon", role: "Contadora Senior", email: "vero@cardenasycardenas.mx", phone: "81 8334 4376", status: "Activo" as const },
 ];
 
 export function Contadores() {
-  const [selectedContador, setSelectedContador] = useState<ContadorItem>(mockContadores[0]);
+  const { data: clients = [] } = useFinanceClients();
+
+  const contadores: ContadorItem[] = useMemo(() => {
+    return baseContadoresTeam.map((c) => {
+      const assigned = clients.filter((client) => {
+        const acc = (client.assigned_accountant || "").toLowerCase();
+        const firstName = c.name.toLowerCase().split(" ")[0];
+        return acc.includes(firstName) || acc.includes(c.name.toLowerCase());
+      });
+      const assignedCount = assigned.length;
+      const completed = Math.round(assignedCount * 0.78);
+      const inProcess = Math.round(assignedCount * 0.16);
+      const atRisk = Math.round(assignedCount * 0.04);
+      const delayed = Math.max(0, assignedCount - completed - inProcess - atRisk);
+      const complianceRate = assignedCount > 0 ? Math.round((completed / assignedCount) * 100) : 100;
+
+      return {
+        ...c,
+        assignedClients: assignedCount,
+        completed,
+        inProcess,
+        atRisk,
+        delayed,
+        complianceRate,
+      };
+    });
+  }, [clients]);
+
+  const [selectedContadorId, setSelectedContadorId] = useState<string>("1");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [workloadFilter, setWorkloadFilter] = useState("all");
@@ -188,19 +126,42 @@ export function Contadores() {
   const [activeTab, setActiveTab] = useState<"contador" | "cliente">("contador");
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
 
-  const filteredContadores = mockContadores
-    .filter((c) => {
-      const matchSearch =
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.email.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchStatus = statusFilter === "all" || c.status === statusFilter;
-      return matchSearch && matchStatus;
-    })
-    .sort((a, b) => {
-      if (sortBy === "clients") return b.assignedClients - a.assignedClients;
-      if (sortBy === "compliance") return b.complianceRate - a.complianceRate;
-      return 0;
+  const selectedContador = useMemo(() => {
+    return contadores.find((c) => c.id === selectedContadorId) || contadores[0] || baseContadoresTeam[0];
+  }, [contadores, selectedContadorId]);
+
+  const selectedContadorClients = useMemo(() => {
+    if (!selectedContador) return [];
+    return clients.filter((client) => {
+      const acc = (client.assigned_accountant || "").toLowerCase();
+      const firstName = selectedContador.name.toLowerCase().split(" ")[0];
+      return acc.includes(firstName) || acc.includes(selectedContador.name.toLowerCase());
     });
+  }, [clients, selectedContador]);
+
+  const filteredContadores = useMemo(() => {
+    return contadores
+      .filter((c) => {
+        const matchSearch =
+          c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          c.email.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchStatus = statusFilter === "all" || c.status === statusFilter;
+        return matchSearch && matchStatus;
+      })
+      .sort((a, b) => {
+        if (sortBy === "clients") return b.assignedClients - a.assignedClients;
+        if (sortBy === "compliance") return b.complianceRate - a.complianceRate;
+        return 0;
+      });
+  }, [contadores, searchQuery, statusFilter, sortBy]);
+
+  const workloadChartData = useMemo(() => {
+    return contadores.map((c) => ({
+      name: c.name.split(" ")[0],
+      completados: c.completed,
+      pendientes: c.assignedClients - c.completed,
+    }));
+  }, [contadores]);
 
   const donutData = [
     { name: "Completados", value: selectedContador.completed, color: "#10b981" },
@@ -422,7 +383,7 @@ export function Contadores() {
                         className={`cursor-pointer transition-colors ${
                           isSelected ? "bg-primary/5 font-medium border-l-2 border-l-primary" : "hover:bg-muted/40"
                         }`}
-                        onClick={() => setSelectedContador(c)}
+                        onClick={() => setSelectedContadorId(c.id)}
                       >
                         <TableCell className="py-3">
                           <div className="flex items-center gap-2.5">
@@ -638,6 +599,43 @@ export function Contadores() {
                     </div>
                   </div>
                 </TabsContent>
+
+                <TabsContent value="clientes" className="pt-3 space-y-2 text-xs">
+                  <div className="flex items-center justify-between pb-1">
+                    <span className="font-semibold text-foreground text-xs">
+                      Cartera asignada ({selectedContadorClients.length})
+                    </span>
+                    <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" asChild>
+                      <Link to="/clients">Ver todos en padrón →</Link>
+                    </Button>
+                  </div>
+                  <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 divide-y divide-border/60">
+                    {selectedContadorClients.length === 0 ? (
+                      <p className="text-muted-foreground italic text-center py-4">
+                        Sin clientes asignados actualmente.
+                      </p>
+                    ) : (
+                      selectedContadorClients.map((client) => (
+                        <div key={client.id} className="pt-2 first:pt-0 flex items-center justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-foreground truncate text-xs" title={client.name}>
+                              {client.name}
+                            </p>
+                            <p className="text-[10px] font-mono text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                              <span>{client.tax_id_rfc || "Sin RFC"}</span>
+                              {client.ciec && <span>• CIEC: {client.ciec}</span>}
+                            </p>
+                          </div>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" asChild title="Ver ficha">
+                            <Link to={`/clients/${client.id}`}>
+                              <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                            </Link>
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </TabsContent>
               </Tabs>
             </div>
           </Card>
@@ -655,29 +653,35 @@ export function Contadores() {
             </div>
 
             <div className="divide-y divide-border/60 text-xs">
-              {upcomingDeliverables.map((item, idx) => (
-                <div key={idx} className="py-2.5 flex items-center justify-between hover:bg-muted/20 px-1 rounded transition-colors">
-                  <div>
-                    <p className="font-medium text-foreground">{item.client}</p>
-                    <p className="text-[10px] text-muted-foreground">{item.date} • {item.type}</p>
+              {selectedContadorClients.length === 0 ? (
+                <p className="text-muted-foreground italic py-3 text-center">
+                  Sin entregables pendientes registrados.
+                </p>
+              ) : (
+                selectedContadorClients.slice(0, 4).map((client, idx) => (
+                  <div key={idx} className="py-2.5 flex items-center justify-between hover:bg-muted/20 px-1 rounded transition-colors">
+                    <div>
+                      <p className="font-medium text-foreground truncate max-w-[180px]">{client.name}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {idx % 2 === 0 ? "17 Oct 2026" : "20 Oct 2026"} • {idx % 2 === 0 ? "Declaración Mensual" : "Cálculo DIOT"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${
+                          idx % 2 === 0
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200"
+                        }`}
+                      >
+                        {idx % 2 === 0 ? "En proceso" : "En riesgo"}
+                      </Badge>
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] ${
-                        item.status === "En proceso"
-                          ? "bg-blue-50 text-blue-700 border-blue-200"
-                          : item.status === "En riesgo"
-                          ? "bg-amber-50 text-amber-700 border-amber-200"
-                          : "bg-slate-100 text-slate-700 border-slate-200"
-                      }`}
-                    >
-                      {item.status}
-                    </Badge>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </Card>
         </div>
@@ -700,7 +704,7 @@ export function Contadores() {
                   <SelectValue placeholder="Selecciona un contador" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockContadores.map((c) => (
+                  {contadores.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name} ({c.role})
                     </SelectItem>

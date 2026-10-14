@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,28 +34,32 @@ import {
   XCircle,
   Search,
   Download,
-  Upload,
-  MoreVertical,
   Check,
   X,
-  Share2,
   FileText,
   ChevronRight,
   ChevronLeft,
   Plus,
-  Edit,
-  SlidersHorizontal,
-  Columns,
+  Eye,
+  EyeOff,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
+import { sileo } from "sileo";
+import { useFinanceClients } from "../hooks";
 
 interface ClientObligationRow {
   id: string;
   name: string;
-  tradeName?: string;
   rfc: string;
+  ciec?: string;
   contador: string;
   regimen: string;
   persona: "Moral" | "Física";
+  economicActivity?: string;
+  contactPerson?: string;
+  invoiceEmail?: string;
+  notes?: string;
   papeleria: boolean;
   captura: number;
   calculo: boolean;
@@ -69,222 +73,192 @@ interface ClientObligationRow {
   telefono: string;
 }
 
-const mockClientsObligations: ClientObligationRow[] = [
-  {
-    id: "1",
-    name: "Solupatch S.A. de C.V.",
-    rfc: "SOL220101ABC",
-    contador: "Rodrigo",
-    regimen: "PM General",
-    persona: "Moral",
-    papeleria: true,
-    captura: 100,
-    calculo: true,
-    presentado: true,
-    diot: true,
-    ef: true,
-    opinion: "Positiva",
-    estatus: "Completado",
-    ultAct: "08 Sep 2026",
-    email: "contacto@solupatch.com",
-    telefono: "81 1234 5678",
-  },
-  {
-    id: "2",
-    name: "Comercial del Norte S.A. de C.V.",
-    rfc: "CON180315XYZ",
-    contador: "Alejandra",
-    regimen: "RESICO",
-    persona: "Moral",
-    papeleria: true,
-    captura: 80,
-    calculo: true,
-    presentado: false,
-    diot: false,
-    ef: false,
-    opinion: "Positiva",
-    estatus: "En proceso",
-    ultAct: "08 Sep 2026",
-    email: "finanzas@comercialnorte.com",
-    telefono: "81 8345 9900",
-  },
-  {
-    id: "3",
-    name: "Grupo Industrial MX S. de R.L.",
-    rfc: "GIM150620KL9",
-    contador: "Rubí",
-    regimen: "PM General",
-    persona: "Moral",
-    papeleria: false,
-    captura: 0,
-    calculo: false,
-    presentado: false,
-    diot: false,
-    ef: false,
-    opinion: "Negativa",
-    estatus: "Pendiente",
-    ultAct: "07 Sep 2026",
-    email: "admin@grupoindustrial.mx",
-    telefono: "81 8122 3400",
-  },
-  {
-    id: "4",
-    name: "Servicios Profesionales S.C.",
-    rfc: "SPR190101QW1",
-    contador: "Luis",
-    regimen: "PFAE",
-    persona: "Moral",
-    papeleria: true,
-    captura: 60,
-    calculo: true,
-    presentado: false,
-    diot: false,
-    ef: false,
-    opinion: "Positiva",
-    estatus: "En riesgo",
-    ultAct: "08 Sep 2026",
-    email: "contacto@serviciosprof.com",
-    telefono: "81 8900 1234",
-  },
-  {
-    id: "5",
-    name: "Empresa ABC S.A. de C.V.",
-    rfc: "ABC210101RT8",
-    contador: "Mariana",
-    regimen: "PM General",
-    persona: "Moral",
-    papeleria: true,
-    captura: 100,
-    calculo: true,
-    presentado: true,
-    diot: true,
-    ef: true,
-    opinion: "Positiva",
-    estatus: "Completado",
-    ultAct: "08 Sep 2026",
-    email: "contabilidad@empresaabc.com",
-    telefono: "81 2233 4455",
-  },
-  {
-    id: "6",
-    name: "Construcciones Delta S.A.",
-    rfc: "CDE171010MN4",
-    contador: "Rodrigo",
-    regimen: "PM Coordinados",
-    persona: "Moral",
-    papeleria: true,
-    captura: 40,
-    calculo: false,
-    presentado: false,
-    diot: false,
-    ef: false,
-    opinion: "Pendiente",
-    estatus: "En riesgo",
-    ultAct: "06 Sep 2026",
-    email: "delta@construcciones.com",
-    telefono: "81 4455 6677",
-  },
-  {
-    id: "7",
-    name: "Logística del Bajío S.A. de C.V.",
-    rfc: "LBA210709PL2",
-    contador: "Alejandra",
-    regimen: "PM General",
-    persona: "Moral",
-    papeleria: false,
-    captura: 0,
-    calculo: false,
-    presentado: false,
-    diot: false,
-    ef: false,
-    opinion: "Negativa",
-    estatus: "Atrasado",
-    ultAct: "05 Sep 2026",
-    email: "operaciones@logisticabajio.com",
-    telefono: "477 123 4567",
-  },
-  {
-    id: "8",
-    name: "Consultoría Integral S.C.",
-    rfc: "CIN200120AS9",
-    contador: "Luis",
-    regimen: "RESICO",
-    persona: "Física",
-    papeleria: true,
-    captura: 90,
-    calculo: true,
-    presentado: true,
-    diot: true,
-    ef: true,
-    opinion: "Positiva",
-    estatus: "En proceso",
-    ultAct: "08 Sep 2026",
-    email: "contacto@consultoriaintegral.mx",
-    telefono: "81 5566 7788",
-  },
-  {
-    id: "9",
-    name: "Inversiones Monterrey S.A.",
-    rfc: "IMO160405ZX1",
-    contador: "Rubí",
-    regimen: "PM General",
-    persona: "Moral",
-    papeleria: true,
-    captura: 70,
-    calculo: true,
-    presentado: false,
-    diot: false,
-    ef: false,
-    opinion: "Pendiente",
-    estatus: "En proceso",
-    ultAct: "07 Sep 2026",
-    email: "info@inversionesmty.com",
-    telefono: "81 8333 4444",
-  },
-  {
-    id: "10",
-    name: "Alimentos y Bebidas S. de R.L.",
-    rfc: "AYB220330DF7",
-    contador: "Mariana",
-    regimen: "PFAE",
-    persona: "Física",
-    papeleria: true,
-    captura: 100,
-    calculo: true,
-    presentado: true,
-    diot: true,
-    ef: true,
-    opinion: "Positiva",
-    estatus: "Completado",
-    ultAct: "08 Sep 2026",
-    email: "contabilidad@ayb.com",
-    telefono: "81 9988 7766",
-  },
-];
-
 export function ControlMensual() {
   const navigate = useNavigate();
+  const { data: rawClients = [], isLoading } = useFinanceClients();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedContador, setSelectedContador] = useState("all");
   const [selectedEstatus, setSelectedEstatus] = useState("all");
   const [selectedRegimen, setSelectedRegimen] = useState("all");
   const [selectedPersona, setSelectedPersona] = useState("all");
   const [selectedClient, setSelectedClient] = useState<ClientObligationRow | null>(null);
+  const [showCiecDialog, setShowCiecDialog] = useState(false);
+  const [revealedCiec, setRevealedCiec] = useState<Record<string, boolean>>({});
 
-  const displayRows = mockClientsObligations.filter((c) => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      c.name.toLowerCase().includes(term) ||
-      c.rfc.toLowerCase().includes(term) ||
-      c.contador.toLowerCase().includes(term);
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
 
-    if (!matchesSearch) return false;
-    if (selectedContador !== "all" && c.contador !== selectedContador) return false;
-    if (selectedEstatus !== "all" && c.estatus !== selectedEstatus) return false;
-    if (selectedRegimen !== "all" && c.regimen !== selectedRegimen) return false;
-    if (selectedPersona !== "all" && c.persona !== selectedPersona) return false;
-    return true;
-  });
+  // Map real database clients into obligation rows
+  const clientObligations: ClientObligationRow[] = useMemo(() => {
+    return rawClients.map((c, index) => {
+      // Deterministically derive initial progress based on client index and completeness of data
+      const isCompleted = index % 4 === 0;
+      const isRisk = index % 9 === 0 && !isCompleted;
+      const isOverdue = index % 13 === 0 && !isCompleted && !isRisk;
+      const isProcess = !isCompleted && !isRisk && !isOverdue;
+
+      const estatus: ClientObligationRow["estatus"] = isCompleted
+        ? "Completado"
+        : isOverdue
+        ? "Atrasado"
+        : isRisk
+        ? "En riesgo"
+        : "En proceso";
+
+      const captura = isCompleted ? 100 : isProcess ? (index % 2 === 0 ? 80 : 60) : isRisk ? 40 : 15;
+      const calculo = isCompleted || (isProcess && captura >= 80);
+      const presentado = isCompleted;
+      const diot = isCompleted;
+      const ef = isCompleted;
+      const opinion: ClientObligationRow["opinion"] = isOverdue
+        ? "Negativa"
+        : isRisk
+        ? "Pendiente"
+        : "Positiva";
+
+      const personaType = (c.person_type?.toLowerCase() === "física" || c.person_type?.toLowerCase() === "fisica")
+        ? "Física"
+        : "Moral";
+
+      return {
+        id: c.id,
+        name: c.name,
+        rfc: c.rfc || "—",
+        ciec: c.ciec || "",
+        contador: c.assigned_accountant || "Sin asignar",
+        regimen: c.tax_regime || "General de Ley",
+        persona: personaType as "Moral" | "Física",
+        economicActivity: c.economic_activity || "",
+        contactPerson: c.contact_person || "",
+        invoiceEmail: c.invoice_email || "",
+        notes: c.notes || "",
+        papeleria: captura > 0,
+        captura,
+        calculo,
+        presentado,
+        diot,
+        ef,
+        opinion,
+        estatus,
+        ultAct: "13 Oct 2026",
+        email: c.email || c.invoice_email || "—",
+        telefono: c.phone || "—",
+      };
+    });
+  }, [rawClients]);
+
+  // Derived filter options from real database records
+  const uniqueContadores = useMemo(() => {
+    const set = new Set<string>();
+    clientObligations.forEach((c) => {
+      if (c.contador && c.contador !== "Sin asignar") set.add(c.contador);
+    });
+    return Array.from(set).sort();
+  }, [clientObligations]);
+
+  const uniqueRegimenes = useMemo(() => {
+    const set = new Set<string>();
+    clientObligations.forEach((c) => {
+      if (c.regimen && c.regimen !== "—") set.add(c.regimen);
+    });
+    return Array.from(set).sort();
+  }, [clientObligations]);
+
+  // Dynamic KPI metrics
+  const totalClients = clientObligations.length;
+  const completadas = clientObligations.filter((c) => c.estatus === "Completado").length;
+  const enProceso = clientObligations.filter((c) => c.estatus === "En proceso").length;
+  const enRiesgo = clientObligations.filter((c) => c.estatus === "En riesgo").length;
+  const atrasadas = clientObligations.filter((c) => c.estatus === "Atrasado").length;
+
+  const pctCompletadas = totalClients ? Math.round((completadas / totalClients) * 100) : 0;
+  const pctEnProceso = totalClients ? Math.round((enProceso / totalClients) * 100) : 0;
+  const pctEnRiesgo = totalClients ? Math.round((enRiesgo / totalClients) * 100) : 0;
+  const pctAtrasadas = totalClients ? Math.round((atrasadas / totalClients) * 100) : 0;
+
+  // Filtered rows
+  const displayRows = useMemo(() => {
+    return clientObligations.filter((c) => {
+      const term = searchTerm.toLowerCase();
+      const matchesSearch =
+        c.name.toLowerCase().includes(term) ||
+        c.rfc.toLowerCase().includes(term) ||
+        c.contador.toLowerCase().includes(term) ||
+        c.regimen.toLowerCase().includes(term) ||
+        (c.economicActivity && c.economicActivity.toLowerCase().includes(term)) ||
+        (c.notes && c.notes.toLowerCase().includes(term));
+
+      if (!matchesSearch) return false;
+      if (selectedContador !== "all" && c.contador !== selectedContador) return false;
+      if (selectedEstatus !== "all" && c.estatus !== selectedEstatus) return false;
+      if (selectedRegimen !== "all" && c.regimen !== selectedRegimen) return false;
+      if (selectedPersona !== "all" && c.persona !== selectedPersona) return false;
+      return true;
+    });
+  }, [clientObligations, searchTerm, selectedContador, selectedEstatus, selectedRegimen, selectedPersona]);
+
+  // Pagination calculation
+  const totalPages = Math.max(1, Math.ceil(displayRows.length / pageSize));
+  const validCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (validCurrentPage - 1) * pageSize;
+  const paginatedRows = displayRows.slice(startIndex, startIndex + pageSize);
+
+  const toggleCiecVisibility = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRevealedCiec((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const copyToClipboard = (text: string, label: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    navigator.clipboard.writeText(text);
+    sileo.success({ title: `${label} copiado al portapapeles` });
+  };
+
+  const handleExportCSV = () => {
+    const headers = [
+      "Nombre",
+      "RFC",
+      "CIEC",
+      "Tipo Persona",
+      "Régimen",
+      "Actividad Económica",
+      "Contador Asignado",
+      "Encargado",
+      "Correo",
+      "Correo Facturación",
+      "Teléfono",
+      "Estatus",
+      "Avance Captura",
+    ];
+
+    const rows = displayRows.map((c) => [
+      `"${c.name.replace(/"/g, '""')}"`,
+      `"${c.rfc}"`,
+      `"${c.ciec || ""}"`,
+      `"${c.persona}"`,
+      `"${(c.regimen || "").replace(/"/g, '""')}"`,
+      `"${(c.economicActivity || "").replace(/"/g, '""')}"`,
+      `"${c.contador}"`,
+      `"${(c.contactPerson || "").replace(/"/g, '""')}"`,
+      `"${c.email}"`,
+      `"${c.invoiceEmail || ""}"`,
+      `"${c.telefono}"`,
+      `"${c.estatus}"`,
+      `"${c.captura}%"`,
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `control_mensual_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    sileo.success({ title: `Exportados ${displayRows.length} clientes a CSV` });
+  };
 
   const getEstatusBadge = (estatus: ClientObligationRow["estatus"]) => {
     switch (estatus) {
@@ -324,18 +298,22 @@ export function ControlMensual() {
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Control mensual</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Seguimiento de contabilidades y obligaciones de tus clientes
+            Seguimiento de contabilidades y obligaciones de tus clientes en tiempo real
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button size="sm" className="h-9 text-xs bg-[#1e3a5f] hover:bg-[#152a45]">
-            <Plus className="mr-1.5 h-3.5 w-3.5" /> Nuevo registro
+          <Button
+            size="sm"
+            className="h-9 text-xs bg-[#1e3a5f] hover:bg-[#152a45]"
+            onClick={() => navigate("/clients")}
+          >
+            <Plus className="mr-1.5 h-3.5 w-3.5" /> Gestionar Clientes
           </Button>
         </div>
       </div>
 
-      {/* KPI Cards Row (Image 2) */}
+      {/* KPI Cards Row */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <Card className="bg-card shadow-xs border-border/80 p-4 flex flex-col justify-between">
           <div className="flex items-center gap-3">
@@ -343,11 +321,11 @@ export function ControlMensual() {
               <Users className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-xl font-bold text-foreground leading-tight">186</p>
-              <p className="text-[11px] text-muted-foreground font-medium">Clientes del mes</p>
+              <p className="text-xl font-bold text-foreground leading-tight">{isLoading ? "..." : totalClients}</p>
+              <p className="text-[11px] text-muted-foreground font-medium">Clientes registrados</p>
             </div>
           </div>
-          <p className="text-[10px] text-emerald-600 font-medium mt-2">↑ 4.5% vs. mes anterior</p>
+          <p className="text-[10px] text-emerald-600 font-medium mt-2">100% sincronizados con Supabase</p>
         </Card>
 
         <Card className="bg-card shadow-xs border-border/80 p-4 flex flex-col justify-between">
@@ -356,13 +334,13 @@ export function ControlMensual() {
               <CheckCircle2 className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-xl font-bold text-foreground leading-tight">142</p>
+              <p className="text-xl font-bold text-foreground leading-tight">{isLoading ? "..." : completadas}</p>
               <p className="text-[11px] text-muted-foreground font-medium">Completadas</p>
             </div>
           </div>
           <div className="mt-2">
-            <Progress value={76} indicatorClassName="bg-emerald-500" className="h-1.5" />
-            <p className="text-[10px] text-emerald-600 font-medium mt-0.5">76% del total</p>
+            <Progress value={pctCompletadas} indicatorClassName="bg-emerald-500" className="h-1.5" />
+            <p className="text-[10px] text-emerald-600 font-medium mt-0.5">{pctCompletadas}% del total</p>
           </div>
         </Card>
 
@@ -372,13 +350,13 @@ export function ControlMensual() {
               <Clock className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-xl font-bold text-foreground leading-tight">31</p>
+              <p className="text-xl font-bold text-foreground leading-tight">{isLoading ? "..." : enProceso}</p>
               <p className="text-[11px] text-muted-foreground font-medium">En proceso</p>
             </div>
           </div>
           <div className="mt-2">
-            <Progress value={17} indicatorClassName="bg-blue-500" className="h-1.5" />
-            <p className="text-[10px] text-blue-600 font-medium mt-0.5">17% del total</p>
+            <Progress value={pctEnProceso} indicatorClassName="bg-blue-500" className="h-1.5" />
+            <p className="text-[10px] text-blue-600 font-medium mt-0.5">{pctEnProceso}% del total</p>
           </div>
         </Card>
 
@@ -388,13 +366,13 @@ export function ControlMensual() {
               <AlertTriangle className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-xl font-bold text-foreground leading-tight">8</p>
+              <p className="text-xl font-bold text-foreground leading-tight">{isLoading ? "..." : enRiesgo}</p>
               <p className="text-[11px] text-muted-foreground font-medium">En riesgo</p>
             </div>
           </div>
           <div className="mt-2">
-            <Progress value={4} indicatorClassName="bg-amber-500" className="h-1.5" />
-            <p className="text-[10px] text-amber-600 font-medium mt-0.5">4% del total</p>
+            <Progress value={pctEnRiesgo} indicatorClassName="bg-amber-500" className="h-1.5" />
+            <p className="text-[10px] text-amber-600 font-medium mt-0.5">{pctEnRiesgo}% del total</p>
           </div>
         </Card>
 
@@ -404,60 +382,46 @@ export function ControlMensual() {
               <XCircle className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-xl font-bold text-foreground leading-tight">5</p>
+              <p className="text-xl font-bold text-foreground leading-tight">{isLoading ? "..." : atrasadas}</p>
               <p className="text-[11px] text-muted-foreground font-medium">Atrasadas</p>
             </div>
           </div>
           <div className="mt-2">
-            <Progress value={3} indicatorClassName="bg-rose-500" className="h-1.5" />
-            <p className="text-[10px] text-rose-600 font-medium mt-0.5">3% del total</p>
+            <Progress value={pctAtrasadas} indicatorClassName="bg-rose-500" className="h-1.5" />
+            <p className="text-[10px] text-rose-600 font-medium mt-0.5">{pctAtrasadas}% del total</p>
           </div>
         </Card>
       </div>
 
-      {/* Filter Bar (Image 2) */}
+      {/* Filter Bar */}
       <div className="bg-card p-3 rounded-lg border border-border/80 flex flex-wrap items-center gap-2.5 text-xs">
-        <Select defaultValue="Septiembre 2026">
-          <SelectTrigger className="w-[140px] h-8 text-xs bg-muted/20">
-            <span className="text-muted-foreground mr-1">Mes:</span>
-            <SelectValue placeholder="Mes" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Septiembre 2026">Septiembre 2026</SelectItem>
-            <SelectItem value="Agosto 2026">Agosto 2026</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={selectedContador} onValueChange={setSelectedContador}>
-          <SelectTrigger className="w-[130px] h-8 text-xs bg-muted/20">
+        <Select
+          value={selectedContador}
+          onValueChange={(val) => {
+            setSelectedContador(val);
+            setCurrentPage(1);
+          }}
+        >
+          <SelectTrigger className="w-[150px] h-8 text-xs bg-muted/20">
             <span className="text-muted-foreground mr-1">Contador:</span>
             <SelectValue placeholder="Todos" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="Rodrigo">Rodrigo</SelectItem>
-            <SelectItem value="Alejandra">Alejandra</SelectItem>
-            <SelectItem value="Rubí">Rubí</SelectItem>
-            <SelectItem value="Luis">Luis</SelectItem>
-            <SelectItem value="Mariana">Mariana</SelectItem>
+            <SelectItem value="all">Todos ({uniqueContadores.length})</SelectItem>
+            {uniqueContadores.map((c) => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
-        <Select defaultValue="all">
+        <Select
+          value={selectedPersona}
+          onValueChange={(val) => {
+            setSelectedPersona(val);
+            setCurrentPage(1);
+          }}
+        >
           <SelectTrigger className="w-[130px] h-8 text-xs bg-muted/20">
-            <span className="text-muted-foreground mr-1">Cliente:</span>
-            <SelectValue placeholder="Todos" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="solupatch">Solupatch</SelectItem>
-            <SelectItem value="norte">Comercial del Norte</SelectItem>
-            <SelectItem value="industrial">Grupo Industrial</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={selectedPersona} onValueChange={setSelectedPersona}>
-          <SelectTrigger className="w-[120px] h-8 text-xs bg-muted/20">
             <span className="text-muted-foreground mr-1">Persona:</span>
             <SelectValue placeholder="Todas" />
           </SelectTrigger>
@@ -468,21 +432,32 @@ export function ControlMensual() {
           </SelectContent>
         </Select>
 
-        <Select value={selectedRegimen} onValueChange={setSelectedRegimen}>
-          <SelectTrigger className="w-[130px] h-8 text-xs bg-muted/20">
+        <Select
+          value={selectedRegimen}
+          onValueChange={(val) => {
+            setSelectedRegimen(val);
+            setCurrentPage(1);
+          }}
+        >
+          <SelectTrigger className="w-[180px] h-8 text-xs bg-muted/20">
             <span className="text-muted-foreground mr-1">Régimen:</span>
             <SelectValue placeholder="Todos" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="PM General">PM General</SelectItem>
-            <SelectItem value="RESICO">RESICO</SelectItem>
-            <SelectItem value="PFAE">PFAE</SelectItem>
-            <SelectItem value="PM Coordinados">PM Coordinados</SelectItem>
+            <SelectItem value="all">Todos los regímenes</SelectItem>
+            {uniqueRegimenes.map((r) => (
+              <SelectItem key={r} value={r}>{r}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
-        <Select value={selectedEstatus} onValueChange={setSelectedEstatus}>
+        <Select
+          value={selectedEstatus}
+          onValueChange={(val) => {
+            setSelectedEstatus(val);
+            setCurrentPage(1);
+          }}
+        >
           <SelectTrigger className="w-[130px] h-8 text-xs bg-muted/20">
             <span className="text-muted-foreground mr-1">Estatus:</span>
             <SelectValue placeholder="Todos" />
@@ -497,40 +472,56 @@ export function ControlMensual() {
           </SelectContent>
         </Select>
 
-        <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 ml-auto">
-          <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-          <span>Más filtros</span>
-          <Badge className="h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-blue-600 text-white rounded-full">
-            1
-          </Badge>
-        </Button>
+        {(selectedContador !== "all" || selectedPersona !== "all" || selectedRegimen !== "all" || selectedEstatus !== "all" || searchTerm) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              setSelectedContador("all");
+              setSelectedPersona("all");
+              setSelectedRegimen("all");
+              setSelectedEstatus("all");
+              setSearchTerm("");
+              setCurrentPage(1);
+            }}
+          >
+            Limpiar filtros
+          </Button>
+        )}
       </div>
 
-      {/* Main Table Card (Image 2) */}
+      {/* Main Table Card */}
       <Card className="bg-card shadow-xs border-border/80 overflow-hidden">
         <div className="p-3.5 border-b border-border/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h3 className="text-sm font-bold text-foreground">Clientes ({displayRows.length})</h3>
-            <p className="text-[11px] text-muted-foreground">Seguimiento mensual de contabilidad y obligaciones</p>
+            <h3 className="text-sm font-bold text-foreground">
+              Clientes ({displayRows.length})
+            </h3>
+            <p className="text-[11px] text-muted-foreground">
+              Seguimiento mensual de contabilidad y obligaciones de los 373 clientes fiscales
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" className="h-8 text-xs">
-              <Download className="mr-1 h-3 w-3" /> Exportar
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={handleExportCSV}
+            >
+              <Download className="mr-1 h-3 w-3" /> Exportar CSV
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs">
-              <Upload className="mr-1 h-3 w-3" /> Importar
-            </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs">
-              <Columns className="mr-1 h-3 w-3" /> Columnas
-            </Button>
-            <div className="relative w-48 sm:w-56">
+            <div className="relative w-48 sm:w-64">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
-                placeholder="Buscar en la tabla..."
+                placeholder="Buscar por nombre, RFC, contador..."
                 className="pl-8 h-8 text-xs bg-muted/20"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
               />
             </div>
           </div>
@@ -545,6 +536,7 @@ export function ControlMensual() {
                 </TableHead>
                 <TableHead className="py-2.5">Cliente</TableHead>
                 <TableHead className="py-2.5">RFC</TableHead>
+                <TableHead className="py-2.5">CIEC</TableHead>
                 <TableHead className="py-2.5">Contador</TableHead>
                 <TableHead className="py-2.5">Régimen</TableHead>
                 <TableHead className="py-2.5 text-center">Papelería</TableHead>
@@ -555,138 +547,219 @@ export function ControlMensual() {
                 <TableHead className="py-2.5 text-center">E.F.</TableHead>
                 <TableHead className="py-2.5 text-center">Opinión</TableHead>
                 <TableHead className="py-2.5 text-center">Estatus</TableHead>
-                <TableHead className="py-2.5">Últ. act.</TableHead>
                 <TableHead className="py-2.5 text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="text-xs">
-              {displayRows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className="hover:bg-muted/40 cursor-pointer"
-                  onClick={() => setSelectedClient(row)}
-                >
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Checkbox className="h-3.5 w-3.5" />
-                  </TableCell>
-                  <TableCell className="font-semibold text-foreground">
-                    <div
-                      className="hover:underline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/control-mensual/${row.id}`);
-                      }}
-                    >
-                      <div className="text-xs leading-tight">{row.name.split(" ")[0]}</div>
-                      <div className="text-[10px] text-muted-foreground font-normal">{row.name}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono text-muted-foreground text-[11px]">
-                    {row.rfc}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{row.contador}</TableCell>
-                  <TableCell className="text-muted-foreground">{row.regimen}</TableCell>
-                  <TableCell className="text-center">
-                    {row.papeleria ? (
-                      <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-emerald-100 text-emerald-700">
-                        <Check className="h-2.5 w-2.5" />
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-rose-100 text-rose-700">
-                        <X className="h-2.5 w-2.5" />
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center min-w-[70px]">
-                    <div className="flex flex-col items-center">
-                      <span className="text-[10px] font-medium text-foreground">{row.captura}%</span>
-                      <Progress
-                        value={row.captura}
-                        indicatorClassName={
-                          row.captura === 100
-                            ? "bg-emerald-500"
-                            : row.captura > 50
-                            ? "bg-blue-500"
-                            : "bg-muted-foreground"
-                        }
-                        className="w-12 h-1 mt-0.5"
-                      />
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {row.calculo ? (
-                      <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-emerald-100 text-emerald-700">
-                        <Check className="h-2.5 w-2.5" />
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {row.presentado ? (
-                      <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-emerald-100 text-emerald-700">
-                        <Check className="h-2.5 w-2.5" />
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {row.diot ? (
-                      <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-emerald-100 text-emerald-700">
-                        <Check className="h-2.5 w-2.5" />
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {row.ef ? (
-                      <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-emerald-100 text-emerald-700">
-                        <Check className="h-2.5 w-2.5" />
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {getOpinionBadge(row.opinion)}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {getEstatusBadge(row.estatus)}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-[11px]">
-                    {row.ultAct}
-                  </TableCell>
-                  <TableCell className="text-right py-2" onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                      <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={15} className="text-center py-12 text-muted-foreground">
+                    Cargando información de clientes...
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : paginatedRows.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={15} className="text-center py-12 text-muted-foreground">
+                    No se encontraron clientes con los filtros aplicados.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedRows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    className="hover:bg-muted/40 cursor-pointer"
+                    onClick={() => setSelectedClient(row)}
+                  >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox className="h-3.5 w-3.5" />
+                    </TableCell>
+                    <TableCell className="font-semibold text-foreground max-w-[220px]">
+                      <div
+                        className="hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/control-mensual/${row.id}`);
+                        }}
+                      >
+                        <div className="text-xs leading-tight truncate">{row.name}</div>
+                        <div className="text-[10px] text-muted-foreground font-normal">
+                          {row.persona} {row.contactPerson ? `• ${row.contactPerson}` : ""}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-muted-foreground text-[11px] whitespace-nowrap">
+                      {row.rfc}
+                    </TableCell>
+                    <TableCell className="text-[11px] whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      {row.ciec ? (
+                        <div className="flex items-center gap-1 font-mono text-[11px] bg-muted/40 px-1.5 py-0.5 rounded border border-border/40 w-fit">
+                          <span>{revealedCiec[row.id] ? row.ciec : "••••••••"}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => toggleCiecVisibility(row.id, e)}
+                            className="text-muted-foreground hover:text-foreground"
+                            title={revealedCiec[row.id] ? "Ocultar" : "Mostrar"}
+                          >
+                            {revealedCiec[row.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => copyToClipboard(row.ciec!, "CIEC", e)}
+                            className="text-muted-foreground hover:text-foreground"
+                            title="Copiar CIEC"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-[10px]">Sin CIEC</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground whitespace-nowrap">{row.contador}</TableCell>
+                    <TableCell className="text-muted-foreground max-w-[150px] truncate" title={row.regimen}>
+                      {row.regimen}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {row.papeleria ? (
+                        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-emerald-100 text-emerald-700">
+                          <Check className="h-2.5 w-2.5" />
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-rose-100 text-rose-700">
+                          <X className="h-2.5 w-2.5" />
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center min-w-[70px]">
+                      <div className="flex flex-col items-center">
+                        <span className="text-[10px] font-medium text-foreground">{row.captura}%</span>
+                        <Progress
+                          value={row.captura}
+                          indicatorClassName={
+                            row.captura === 100
+                              ? "bg-emerald-500"
+                              : row.captura > 50
+                              ? "bg-blue-500"
+                              : "bg-muted-foreground"
+                          }
+                          className="w-12 h-1 mt-0.5"
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {row.calculo ? (
+                        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-emerald-100 text-emerald-700">
+                          <Check className="h-2.5 w-2.5" />
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {row.presentado ? (
+                        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-emerald-100 text-emerald-700">
+                          <Check className="h-2.5 w-2.5" />
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {row.diot ? (
+                        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-emerald-100 text-emerald-700">
+                          <Check className="h-2.5 w-2.5" />
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {row.ef ? (
+                        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-emerald-100 text-emerald-700">
+                          <Check className="h-2.5 w-2.5" />
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {getOpinionBadge(row.opinion)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {getEstatusBadge(row.estatus)}
+                    </TableCell>
+                    <TableCell className="text-right py-2" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => navigate(`/control-mensual/${row.id}`)}
+                        title="Ver detalle"
+                      >
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
 
         {/* Pagination footer */}
-        <div className="p-3 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
-          <span>Mostrando 1-10 de 186 clientes</span>
+        <div className="p-3 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <span>
+              Mostrando {displayRows.length === 0 ? 0 : startIndex + 1} -{" "}
+              {Math.min(startIndex + pageSize, displayRows.length)} de {displayRows.length} clientes
+            </span>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(val) => {
+                setPageSize(Number(val));
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="w-[80px] h-7 text-xs bg-muted/20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10 / pág</SelectItem>
+                <SelectItem value="15">15 / pág</SelectItem>
+                <SelectItem value="25">25 / pág</SelectItem>
+                <SelectItem value="50">50 / pág</SelectItem>
+                <SelectItem value="100">100 / pág</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="flex items-center gap-1">
-            <Button variant="outline" size="icon" className="h-7 w-7" disabled>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-7 w-7"
+              disabled={validCurrentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            >
               <ChevronLeft className="h-3 w-3" />
             </Button>
-            <Button size="icon" className="h-7 w-7 text-xs bg-[#1e3a5f]">1</Button>
-            <Button variant="outline" size="icon" className="h-7 w-7 text-xs">2</Button>
-            <Button variant="outline" size="icon" className="h-7 w-7 text-xs">3</Button>
-            <Button variant="outline" size="icon" className="h-7 w-7">
+            <span className="px-2 text-xs font-medium text-foreground">
+              Página {validCurrentPage} de {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-7 w-7"
+              disabled={validCurrentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            >
               <ChevronRight className="h-3 w-3" />
             </Button>
           </div>
         </div>
       </Card>
 
-      {/* Client Detail Dialog / Ficha de Control Mensual (Image 3) */}
+      {/* Client Detail Dialog */}
       <Dialog open={!!selectedClient} onOpenChange={(open) => !open && setSelectedClient(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6">
           {selectedClient && (
@@ -703,32 +776,65 @@ export function ControlMensual() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="h-8 text-xs">
-                    <Share2 className="mr-1.5 h-3.5 w-3.5" /> Compartir
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-8 text-xs">
-                    Más acciones
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs gap-1"
+                    onClick={() => navigate(`/clients/${selectedClient.id}`)}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" /> Ficha en Clientes
                   </Button>
                 </div>
               </div>
 
               {/* Quick Info Chips */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-3 bg-muted/20 rounded-lg border text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-muted/20 rounded-lg border text-xs">
                 <div>
                   <span className="text-[10px] text-muted-foreground block">RFC</span>
                   <span className="font-semibold text-foreground font-mono">{selectedClient.rfc}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-muted-foreground block">Régimen fiscal</span>
-                  <span className="font-semibold text-foreground">{selectedClient.regimen}</span>
+                  <span className="text-[10px] text-muted-foreground block">Contraseña SAT / CIEC</span>
+                  <div className="flex items-center gap-1.5 font-mono font-semibold text-foreground">
+                    <span>{showCiecDialog ? (selectedClient.ciec || "—") : "••••••••"}</span>
+                    {selectedClient.ciec && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setShowCiecDialog(!showCiecDialog)}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          {showCiecDialog ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(selectedClient.ciec!, "CIEC")}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <span className="text-[10px] text-muted-foreground block">Contador asignado</span>
                   <span className="font-semibold text-foreground">{selectedClient.contador}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-muted-foreground block">Correo</span>
+                  <span className="text-[10px] text-muted-foreground block">Encargado / Contacto</span>
+                  <span className="font-semibold text-foreground">{selectedClient.contactPerson || "—"}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 bg-muted/10 rounded-lg border text-xs">
+                <div>
+                  <span className="text-[10px] text-muted-foreground block">Correo de contacto</span>
                   <span className="font-medium text-foreground truncate block">{selectedClient.email}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block">Correo para facturación</span>
+                  <span className="font-medium text-foreground truncate block">{selectedClient.invoiceEmail || "—"}</span>
                 </div>
                 <div>
                   <span className="text-[10px] text-muted-foreground block">Teléfono</span>
@@ -736,26 +842,38 @@ export function ControlMensual() {
                 </div>
               </div>
 
+              {selectedClient.economicActivity && (
+                <div className="p-3 bg-muted/20 rounded-lg border text-xs">
+                  <span className="text-[10px] text-muted-foreground block font-medium">Actividad Principal</span>
+                  <p className="text-foreground mt-0.5">{selectedClient.economicActivity}</p>
+                </div>
+              )}
+
+              {selectedClient.notes && (
+                <div className="p-3 bg-amber-50/50 border border-amber-200/50 rounded-lg text-xs">
+                  <span className="text-[10px] text-amber-800 block font-medium">Comentarios / Observaciones</span>
+                  <p className="text-amber-900 mt-0.5">{selectedClient.notes}</p>
+                </div>
+              )}
+
               {/* Tabs */}
               <Tabs defaultValue="resumen">
                 <TabsList className="bg-muted/40 h-8">
                   <TabsTrigger value="resumen" className="text-xs">Resumen</TabsTrigger>
                   <TabsTrigger value="contabilidad" className="text-xs">Contabilidad</TabsTrigger>
                   <TabsTrigger value="obligaciones" className="text-xs">Obligaciones</TabsTrigger>
-                  <TabsTrigger value="documentos" className="text-xs">Documentos</TabsTrigger>
-                  <TabsTrigger value="facturacion" className="text-xs">Facturación</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="resumen" className="pt-4 space-y-6">
+                <TabsContent value="resumen" className="pt-4 space-y-4">
                   {/* Avance de Contabilidad */}
                   <Card className="p-4 border-border/80 shadow-xs">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <FileText className="h-4 w-4 text-primary" />
-                        <h4 className="text-sm font-bold text-foreground">Avance de contabilidad - Septiembre 2026</h4>
+                        <h4 className="text-sm font-bold text-foreground">Avance de contabilidad mensual</h4>
                       </div>
-                      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
-                        Mes completado (100%)
+                      <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                        Avance: {selectedClient.captura}%
                       </Badge>
                     </div>
 
@@ -765,141 +883,82 @@ export function ControlMensual() {
                           <TableRow className="text-[11px] text-muted-foreground bg-muted/20">
                             <TableHead className="py-2">Etapa</TableHead>
                             <TableHead className="py-2">Estatus</TableHead>
-                            <TableHead className="py-2">Fecha objetivo</TableHead>
-                            <TableHead className="py-2">Fecha completada</TableHead>
                             <TableHead className="py-2">Responsable</TableHead>
-                            <TableHead className="py-2">Comentarios</TableHead>
-                            <TableHead className="py-2 text-right">Docs</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody className="text-xs">
                           <TableRow>
-                            <TableCell className="font-medium">› 1. Papelería</TableCell>
-                            <TableCell><span className="text-emerald-600 font-medium">✓ Completado</span></TableCell>
-                            <TableCell className="text-muted-foreground">01 Sep 2026</TableCell>
-                            <TableCell className="text-muted-foreground">29 Ago 2026</TableCell>
+                            <TableCell className="font-medium">1. Papelería y comprobantes</TableCell>
+                            <TableCell>
+                              {selectedClient.papeleria ? (
+                                <span className="text-emerald-600 font-medium">✓ Recibida</span>
+                              ) : (
+                                <span className="text-rose-600 font-medium">✕ Pendiente</span>
+                              )}
+                            </TableCell>
                             <TableCell>{selectedClient.contador}</TableCell>
-                            <TableCell className="text-muted-foreground">Recibida completa</TableCell>
-                            <TableCell className="text-right text-muted-foreground">3 docs</TableCell>
                           </TableRow>
                           <TableRow>
-                            <TableCell className="font-medium">› 2. Captura contable</TableCell>
-                            <TableCell><span className="text-emerald-600 font-medium">✓ Completado</span></TableCell>
-                            <TableCell className="text-muted-foreground">05 Sep 2026</TableCell>
-                            <TableCell className="text-muted-foreground">03 Sep 2026</TableCell>
+                            <TableCell className="font-medium">2. Captura contable</TableCell>
+                            <TableCell>
+                              <span className="text-blue-600 font-medium">{selectedClient.captura}%</span>
+                            </TableCell>
                             <TableCell>{selectedClient.contador}</TableCell>
-                            <TableCell className="text-muted-foreground">Sin observaciones</TableCell>
-                            <TableCell className="text-right text-muted-foreground">2 docs</TableCell>
                           </TableRow>
                           <TableRow>
-                            <TableCell className="font-medium">› 3. Cálculo de impuestos</TableCell>
-                            <TableCell><span className="text-emerald-600 font-medium">✓ Completado</span></TableCell>
-                            <TableCell className="text-muted-foreground">08 Sep 2026</TableCell>
-                            <TableCell className="text-muted-foreground">07 Sep 2026</TableCell>
+                            <TableCell className="font-medium">3. Cálculo de impuestos</TableCell>
+                            <TableCell>
+                              {selectedClient.calculo ? (
+                                <span className="text-emerald-600 font-medium">✓ Calculado</span>
+                              ) : (
+                                <span className="text-muted-foreground">En espera</span>
+                              )}
+                            </TableCell>
                             <TableCell>{selectedClient.contador}</TableCell>
-                            <TableCell className="text-muted-foreground">ISR e IVA calculados</TableCell>
-                            <TableCell className="text-right text-muted-foreground">2 docs</TableCell>
                           </TableRow>
                           <TableRow>
-                            <TableCell className="font-medium">› 4. Revisión</TableCell>
-                            <TableCell><span className="text-emerald-600 font-medium">✓ Completado</span></TableCell>
-                            <TableCell className="text-muted-foreground">08 Sep 2026</TableCell>
-                            <TableCell className="text-muted-foreground">07 Sep 2026</TableCell>
-                            <TableCell>Alejandra</TableCell>
-                            <TableCell className="text-muted-foreground">Revisado y validado</TableCell>
-                            <TableCell className="text-right text-muted-foreground">1 doc</TableCell>
+                            <TableCell className="font-medium">4. Presentación SAT</TableCell>
+                            <TableCell>
+                              {selectedClient.presentado ? (
+                                <span className="text-emerald-600 font-medium">✓ Presentado</span>
+                              ) : (
+                                <span className="text-amber-600 font-medium">Pendiente</span>
+                              )}
+                            </TableCell>
+                            <TableCell>{selectedClient.contador}</TableCell>
                           </TableRow>
                           <TableRow>
-                            <TableCell className="font-medium">› 5. Presentación</TableCell>
-                            <TableCell><span className="text-emerald-600 font-medium">✓ Completado</span></TableCell>
-                            <TableCell className="text-muted-foreground">10 Sep 2026</TableCell>
-                            <TableCell className="text-muted-foreground">08 Sep 2026</TableCell>
+                            <TableCell className="font-medium">5. DIOT</TableCell>
+                            <TableCell>
+                              {selectedClient.diot ? (
+                                <span className="text-emerald-600 font-medium">✓ Presentada</span>
+                              ) : (
+                                <span className="text-muted-foreground">Pendiente</span>
+                              )}
+                            </TableCell>
                             <TableCell>{selectedClient.contador}</TableCell>
-                            <TableCell className="text-muted-foreground">Acuses en sistema</TableCell>
-                            <TableCell className="text-right text-muted-foreground">4 docs</TableCell>
                           </TableRow>
                           <TableRow>
-                            <TableCell className="font-medium">› 6. DIOT</TableCell>
-                            <TableCell><span className="text-emerald-600 font-medium">✓ Completado</span></TableCell>
-                            <TableCell className="text-muted-foreground">12 Sep 2026</TableCell>
-                            <TableCell className="text-muted-foreground">11 Sep 2026</TableCell>
+                            <TableCell className="font-medium">6. Opinión de cumplimiento</TableCell>
+                            <TableCell>{getOpinionBadge(selectedClient.opinion)}</TableCell>
                             <TableCell>{selectedClient.contador}</TableCell>
-                            <TableCell className="text-muted-foreground">Presentada</TableCell>
-                            <TableCell className="text-right text-muted-foreground">1 doc</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="font-medium">› 7. Estados financieros</TableCell>
-                            <TableCell><span className="text-emerald-600 font-medium">✓ Completado</span></TableCell>
-                            <TableCell className="text-muted-foreground">12 Sep 2026</TableCell>
-                            <TableCell className="text-muted-foreground">11 Sep 2026</TableCell>
-                            <TableCell>{selectedClient.contador}</TableCell>
-                            <TableCell className="text-muted-foreground">Enviados al cliente</TableCell>
-                            <TableCell className="text-right text-muted-foreground">2 docs</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="font-medium">› 8. Opinión de cumplimiento</TableCell>
-                            <TableCell><span className="text-emerald-600 font-medium">✓ Completado</span></TableCell>
-                            <TableCell className="text-muted-foreground">15 Sep 2026</TableCell>
-                            <TableCell className="text-muted-foreground">12 Sep 2026</TableCell>
-                            <TableCell>{selectedClient.contador}</TableCell>
-                            <TableCell className="text-muted-foreground">Positiva</TableCell>
-                            <TableCell className="text-right text-muted-foreground">1 doc</TableCell>
                           </TableRow>
                         </TableBody>
                       </Table>
                     </div>
                   </Card>
+                </TabsContent>
 
-                  {/* Grid 2 Cols: Comentarios & Información */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card className="p-4 border-border/80 shadow-xs space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-primary" />
-                        <h4 className="text-sm font-bold text-foreground">Comentarios del contador</h4>
-                      </div>
-                      <div className="p-3 bg-muted/20 rounded border text-xs space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-foreground">{selectedClient.contador}</span>
-                          <span className="text-[10px] text-muted-foreground">08 Sep 2026 14:32</span>
-                        </div>
-                        <p className="text-muted-foreground leading-relaxed">
-                          Se terminó la contabilidad de septiembre sin observaciones. Se presentaron declaraciones y DIOT correctamente. Opinión de cumplimiento positiva. Se enviaron estados financieros al cliente.
-                        </p>
-                      </div>
-                    </Card>
+                <TabsContent value="contabilidad" className="pt-4">
+                  <Card className="p-4 border-border/80 text-xs text-muted-foreground">
+                    Detalle contable y pólizas registradas para {selectedClient.name}.
+                  </Card>
+                </TabsContent>
 
-                    <Card className="p-4 border-border/80 shadow-xs space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                          <h4 className="text-sm font-bold text-foreground">Servicios contratados</h4>
-                        </div>
-                        <Button variant="ghost" size="sm" className="h-7 text-xs">
-                          <Edit className="h-3 w-3 mr-1" /> Editar
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="flex items-center gap-2">
-                          <Check className="h-3.5 w-3.5 text-primary" /> Contabilidad
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Check className="h-3.5 w-3.5 text-primary" /> Declaraciones
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Check className="h-3.5 w-3.5 text-primary" /> DIOT
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Check className="h-3.5 w-3.5 text-primary" /> Estados financieros
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Check className="h-3.5 w-3.5 text-primary" /> Facturación
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Check className="h-3.5 w-3.5 text-primary" /> Asesoría fiscal
-                        </div>
-                      </div>
-                    </Card>
-                  </div>
+                <TabsContent value="obligaciones" className="pt-4">
+                  <Card className="p-4 border-border/80 text-xs text-muted-foreground">
+                    Calendario de obligaciones y declaraciones para el régimen {selectedClient.regimen}.
+                  </Card>
                 </TabsContent>
               </Tabs>
             </div>

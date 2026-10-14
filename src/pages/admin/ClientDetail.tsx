@@ -22,6 +22,10 @@ import {
   FileText,
   Pencil,
   Search,
+  Eye,
+  EyeOff,
+  Key,
+  Building2,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -96,6 +100,7 @@ export function ClientDetail() {
   const [projectStatusFilter, setProjectStatusFilter] = React.useState("all");
 
   const [isEditOpen, setIsEditOpen] = React.useState(false);
+  const [showCiec, setShowCiec] = React.useState(false);
   const [editForm, setEditForm] = React.useState({
     name: "",
     trade_name: "",
@@ -104,6 +109,14 @@ export function ClientDetail() {
     phone: "",
     tax_id_rfc: "",
     fiscal_regime: "",
+    ciec: "",
+    economic_activity: "",
+    invoice_email: "",
+    contact_person: "",
+    assigned_accountant: "",
+    notes: "",
+    person_type: "Moral",
+    status: "Activo",
   });
 
   const handleStartEdit = () => {
@@ -116,6 +129,14 @@ export function ClientDetail() {
       phone: client.phone || "",
       tax_id_rfc: client.tax_id_rfc || "",
       fiscal_regime: client.fiscal_regime || "",
+      ciec: client.ciec || "",
+      economic_activity: client.economic_activity || "",
+      invoice_email: client.invoice_email || "",
+      contact_person: client.contact_person || "",
+      assigned_accountant: client.assigned_accountant || "",
+      notes: client.notes || "",
+      person_type: client.person_type || "Moral",
+      status: client.status || "Activo",
     });
     setIsEditOpen(true);
   };
@@ -135,6 +156,14 @@ export function ClientDetail() {
           phone: editForm.phone.trim() || null,
           tax_id_rfc: editForm.tax_id_rfc.trim().toUpperCase() || null,
           fiscal_regime: editForm.fiscal_regime.trim() || null,
+          ciec: editForm.ciec.trim() || null,
+          economic_activity: editForm.economic_activity.trim() || null,
+          invoice_email: editForm.invoice_email.trim() || null,
+          contact_person: editForm.contact_person.trim() || null,
+          assigned_accountant: editForm.assigned_accountant.trim() || null,
+          notes: editForm.notes.trim() || null,
+          person_type: editForm.person_type || "Moral",
+          status: editForm.status || "Activo",
         },
       });
       sileo.success({ title: "Cliente actualizado con éxito" });
@@ -459,25 +488,109 @@ export function ClientDetail() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold">Datos Fiscales</CardTitle>
+        <Card className="border-border/80">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-primary" /> Datos Fiscales & Contables
+              </CardTitle>
+              <CardDescription className="text-xs">Información tributaria y credenciales del SAT</CardDescription>
+            </div>
+            {client.person_type && (
+              <Badge variant="outline" className={`text-[10px] ${client.person_type === 'Física' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
+                {client.person_type}
+              </Badge>
+            )}
           </CardHeader>
-          <CardContent className="text-xs space-y-1.5">
+          <CardContent className="text-xs space-y-2.5">
             {client.fiscal_name && (
               <div>
-                <span className="text-muted-foreground">Nombre Fiscal: </span>
-                <span className="font-semibold">{client.fiscal_name}</span>
+                <span className="text-muted-foreground block text-[11px]">Razón Social:</span>
+                <span className="font-semibold text-foreground">{client.fiscal_name}</span>
               </div>
             )}
-            <div>
-              <span className="text-muted-foreground">RFC: </span>
-              <span className="font-semibold">{client.tax_id_rfc || "No registrado"}</span>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <span className="text-muted-foreground block text-[11px]">RFC:</span>
+                <span className="font-mono font-semibold text-foreground">{client.tax_id_rfc || "No registrado"}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[11px]">Contador(a):</span>
+                <span className="font-semibold text-primary">{client.assigned_accountant || "Sin asignar"}</span>
+              </div>
             </div>
-            <div>
-              <span className="text-muted-foreground">Régimen Fiscal: </span>
-              <span className="font-semibold">{client.fiscal_regime || "No registrado"}</span>
+
+            {/* CIEC Password field */}
+            <div className="bg-muted/40 p-2 rounded-md border border-border/60">
+              <div className="flex items-center justify-between text-[11px] mb-1">
+                <span className="text-muted-foreground font-medium flex items-center gap-1">
+                  <Key className="h-3 w-3 text-amber-600" /> Contraseña CIEC (SAT):
+                </span>
+                {client.ciec && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowCiec(!showCiec)}
+                      className="text-muted-foreground hover:text-foreground text-[10px] flex items-center gap-0.5"
+                    >
+                      {showCiec ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      {showCiec ? "Ocultar" : "Mostrar"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(client.ciec);
+                        sileo.success({ title: "CIEC copiada al portapapeles" });
+                      }}
+                      className="text-primary hover:underline text-[10px] ml-1.5 flex items-center gap-0.5"
+                    >
+                      <Copy className="h-3 w-3" /> Copiar
+                    </button>
+                  </div>
+                )}
+              </div>
+              <p className="font-mono font-medium text-foreground text-xs select-all">
+                {client.ciec ? (showCiec ? client.ciec : "••••••••") : <span className="text-muted-foreground italic">No registrada</span>}
+              </p>
             </div>
+
+            {client.fiscal_regime && (
+              <div>
+                <span className="text-muted-foreground block text-[11px]">Régimen Fiscal:</span>
+                <span className="font-medium text-foreground">{client.fiscal_regime}</span>
+              </div>
+            )}
+
+            {client.economic_activity && (
+              <div>
+                <span className="text-muted-foreground block text-[11px]">Actividad Principal:</span>
+                <span className="font-medium text-foreground">{client.economic_activity}</span>
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-border/60 grid grid-cols-1 gap-1.5">
+              {client.contact_person && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Encargado:</span>
+                  <span className="font-medium text-foreground text-right">{client.contact_person}</span>
+                </div>
+              )}
+              {client.invoice_email && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Envío Facturas:</span>
+                  <span className="font-medium text-foreground text-right truncate max-w-[200px]" title={client.invoice_email}>
+                    {client.invoice_email}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {client.notes && (
+              <div className="pt-2 border-t border-border/60 bg-amber-50/50 p-2 rounded border-amber-200/60">
+                <span className="text-amber-800 font-semibold block text-[10px] uppercase">Comentarios / Notas:</span>
+                <p className="text-muted-foreground italic text-[11px] mt-0.5 leading-relaxed">{client.notes}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -1064,6 +1177,33 @@ export function ClientDetail() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <label htmlFor="edit-detail-ciec" className="text-sm font-medium">
+                    Contraseña CIEC (SAT)
+                  </label>
+                  <Input
+                    id="edit-detail-ciec"
+                    value={editForm.ciec}
+                    onChange={(e) => setEditForm({ ...editForm, ciec: e.target.value })}
+                    placeholder="Clave CIEC"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="edit-detail-person-type" className="text-sm font-medium">
+                    Tipo de Persona
+                  </label>
+                  <select
+                    id="edit-detail-person-type"
+                    value={editForm.person_type}
+                    onChange={(e) => setEditForm({ ...editForm, person_type: e.target.value })}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="Moral">Moral</option>
+                    <option value="Física">Física</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
                   <label htmlFor="edit-detail-regime" className="text-sm font-medium">
                     Régimen Fiscal
                   </label>
@@ -1071,9 +1211,68 @@ export function ClientDetail() {
                     id="edit-detail-regime"
                     value={editForm.fiscal_regime}
                     onChange={(e) => setEditForm({ ...editForm, fiscal_regime: e.target.value })}
-                    placeholder="601"
+                    placeholder="601 General de Ley / RESICO / PFAE"
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="edit-detail-economic-activity" className="text-sm font-medium">
+                  Actividad Económica Principal
+                </label>
+                <Input
+                  id="edit-detail-economic-activity"
+                  value={editForm.economic_activity}
+                  onChange={(e) => setEditForm({ ...editForm, economic_activity: e.target.value })}
+                  placeholder="Ej. Transporte de carga / Consultoría"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="edit-detail-contact" className="text-sm font-medium">
+                    Encargado / Contacto
+                  </label>
+                  <Input
+                    id="edit-detail-contact"
+                    value={editForm.contact_person}
+                    onChange={(e) => setEditForm({ ...editForm, contact_person: e.target.value })}
+                    placeholder="Lic. Encargado"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="edit-detail-accountant" className="text-sm font-medium">
+                    Contador(a) Asignado
+                  </label>
+                  <Input
+                    id="edit-detail-accountant"
+                    value={editForm.assigned_accountant}
+                    onChange={(e) => setEditForm({ ...editForm, assigned_accountant: e.target.value })}
+                    placeholder="Nombre del contador"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="edit-detail-invoice-email" className="text-sm font-medium">
+                  Correo para Envío de Factura
+                </label>
+                <Input
+                  id="edit-detail-invoice-email"
+                  value={editForm.invoice_email}
+                  onChange={(e) => setEditForm({ ...editForm, invoice_email: e.target.value })}
+                  placeholder="facturas@empresa.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="edit-detail-notes" className="text-sm font-medium">
+                  Comentarios / Notas
+                </label>
+                <textarea
+                  id="edit-detail-notes"
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  rows={3}
+                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+                  placeholder="Notas internas del cliente..."
+                />
               </div>
             </div>
             <DialogFooter>
