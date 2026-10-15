@@ -84,6 +84,7 @@ export function ControlMensual() {
   const [selectedEstatus, setSelectedEstatus] = useState("all");
   const [selectedRegimen, setSelectedRegimen] = useState("all");
   const [selectedPersona, setSelectedPersona] = useState("all");
+  const [selectedPeriod, setSelectedPeriod] = useState("all");
   const [selectedClient, setSelectedClient] = useState<ClientObligationRow | null>(null);
 
   // CIEC Security Vault Modal state
@@ -216,6 +217,14 @@ export function ControlMensual() {
     return Array.from(set).sort();
   }, [clientObligations]);
 
+  const uniquePeriods = useMemo(() => {
+    const set = new Set<string>();
+    clientObligations.forEach((c) => {
+      if (c.accountingPeriod) set.add(c.accountingPeriod);
+    });
+    return Array.from(set).sort().reverse();
+  }, [clientObligations]);
+
   // Dynamic KPI metrics
   const totalClients = clientObligations.length;
   const completadas = clientObligations.filter((c) => c.estatus === "Completado").length;
@@ -237,17 +246,19 @@ export function ControlMensual() {
         c.rfc.toLowerCase().includes(term) ||
         c.contador.toLowerCase().includes(term) ||
         c.regimen.toLowerCase().includes(term) ||
+        (c.accountingPeriod && c.accountingPeriod.toLowerCase().includes(term)) ||
         (c.economicActivity && c.economicActivity.toLowerCase().includes(term)) ||
         (c.notes && c.notes.toLowerCase().includes(term));
 
       if (!matchesSearch) return false;
       if (selectedContador !== "all" && c.contador !== selectedContador) return false;
+      if (selectedPeriod !== "all" && c.accountingPeriod !== selectedPeriod) return false;
       if (selectedEstatus !== "all" && c.estatus !== selectedEstatus) return false;
       if (selectedRegimen !== "all" && c.regimen !== selectedRegimen) return false;
       if (selectedPersona !== "all" && c.persona !== selectedPersona) return false;
       return true;
     });
-  }, [clientObligations, searchTerm, selectedContador, selectedEstatus, selectedRegimen, selectedPersona]);
+  }, [clientObligations, searchTerm, selectedContador, selectedPeriod, selectedEstatus, selectedRegimen, selectedPersona]);
 
   // Pagination calculation
   const totalPages = Math.max(1, Math.ceil(displayRows.length / pageSize));
@@ -491,6 +502,25 @@ export function ControlMensual() {
         </Select>
 
         <Select
+          value={selectedPeriod}
+          onValueChange={(val) => {
+            setSelectedPeriod(val);
+            setCurrentPage(1);
+          }}
+        >
+          <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/20">
+            <span className="text-muted-foreground mr-1">Periodo:</span>
+            <SelectValue placeholder="Todos" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los periodos</SelectItem>
+            {uniquePeriods.map((p) => (
+              <SelectItem key={p} value={p}>{p}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
           value={selectedEstatus}
           onValueChange={(val) => {
             setSelectedEstatus(val);
@@ -511,13 +541,14 @@ export function ControlMensual() {
           </SelectContent>
         </Select>
 
-        {(selectedContador !== "all" || selectedPersona !== "all" || selectedRegimen !== "all" || selectedEstatus !== "all" || searchTerm) && (
+        {(selectedContador !== "all" || selectedPeriod !== "all" || selectedPersona !== "all" || selectedRegimen !== "all" || selectedEstatus !== "all" || searchTerm) && (
           <Button
             variant="ghost"
             size="sm"
             className="h-8 text-xs text-muted-foreground hover:text-foreground"
             onClick={() => {
               setSelectedContador("all");
+              setSelectedPeriod("all");
               setSelectedPersona("all");
               setSelectedRegimen("all");
               setSelectedEstatus("all");
@@ -646,7 +677,10 @@ export function ControlMensual() {
                         <span className="text-muted-foreground text-[10px]">Sin CIEC</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-muted-foreground whitespace-nowrap">{row.contador}</TableCell>
+                    <TableCell className="text-muted-foreground whitespace-nowrap">
+                      <div className="font-medium text-foreground">{row.contador}</div>
+                      <div className="text-[10px] text-primary/80 font-mono">{row.accountingPeriod || "Septiembre 2026"}</div>
+                    </TableCell>
                     <TableCell className="text-muted-foreground max-w-[150px] truncate" title={row.regimen}>
                       {row.regimen}
                     </TableCell>

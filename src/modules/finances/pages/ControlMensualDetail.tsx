@@ -39,6 +39,8 @@ import {
   Lock,
 } from "lucide-react";
 import { sileo } from "sileo";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 import { CiecVaultModal } from "@/components/CiecVaultModal";
 import { useFinanceClients } from "../hooks";
 
@@ -47,10 +49,36 @@ export function ControlMensualDetail() {
   const navigate = useNavigate();
   const { data: clients = [], isLoading } = useFinanceClients();
   const [isVaultOpen, setIsVaultOpen] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState<string>("");
+
+  // Fetch complete historical accounting records for this client
+  const { data: monthlyHistory = [] } = useQuery<any[]>({
+    queryKey: ["client_monthly_accounting", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_monthly_accounting")
+        .select("*")
+        .eq("client_id", id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!id,
+  });
 
   const foundClient = useMemo(() => {
     return clients.find((c) => c.id === id);
   }, [clients, id]);
+
+  const currentPeriod = selectedPeriod || foundClient?.accounting_period || (monthlyHistory[0]?.period) || "Septiembre 2026";
+
+  const activeRecord = useMemo(() => {
+    if (monthlyHistory.length > 0) {
+      const match = monthlyHistory.find((m) => m.period === currentPeriod);
+      if (match) return match;
+    }
+    return foundClient || null;
+  }, [monthlyHistory, currentPeriod, foundClient]);
 
   const clientData = useMemo(() => {
     if (!foundClient) {
@@ -70,9 +98,18 @@ export function ControlMensualDetail() {
         invoiceEmail: "",
         notes: "",
         progress: 100,
+        period: currentPeriod,
+        complianceOpinion: "Positiva",
+        accountingStatus: "En proceso",
       };
     }
-    const hasReal = foundClient.accounting_capture_pct !== null && foundClient.accounting_capture_pct !== undefined;
+    const hasReal = (activeRecord?.accounting_capture_pct !== null && activeRecord?.accounting_capture_pct !== undefined) ||
+                    (foundClient.accounting_capture_pct !== null && foundClient.accounting_capture_pct !== undefined);
+
+    const activePct = activeRecord?.accounting_capture_pct !== null && activeRecord?.accounting_capture_pct !== undefined
+      ? Number(activeRecord.accounting_capture_pct)
+      : (foundClient.accounting_capture_pct !== null && foundClient.accounting_capture_pct !== undefined ? Number(foundClient.accounting_capture_pct) : 100);
+
     return {
       id: foundClient.id,
       name: foundClient.name,
@@ -87,35 +124,35 @@ export function ControlMensualDetail() {
       contactName: foundClient.contact_person || "—",
       ciec: foundClient.ciec || "",
       invoiceEmail: foundClient.invoice_email || "",
-      notes: foundClient.accounting_notes || foundClient.notes || "",
-      progress: hasReal ? Number(foundClient.accounting_capture_pct) : 100,
-      period: foundClient.accounting_period || "Julio 2026",
-      complianceOpinion: foundClient.compliance_opinion || "Positiva",
-      accountingStatus: foundClient.accounting_status || "En proceso",
+      notes: activeRecord?.accounting_notes || foundClient.accounting_notes || foundClient.notes || "",
+      progress: hasReal ? activePct : 100,
+      period: currentPeriod,
+      complianceOpinion: activeRecord?.compliance_opinion || foundClient.compliance_opinion || "Positiva",
+      accountingStatus: activeRecord?.accounting_status || foundClient.accounting_status || "En proceso",
     };
-  }, [foundClient, id, isLoading]);
+  }, [foundClient, activeRecord, currentPeriod, id, isLoading]);
 
   const stages = useMemo(() => {
     const accountant = clientData.accountant || "Sin asignar";
-    const hasReal = foundClient?.accounting_capture_pct !== null && foundClient?.accounting_capture_pct !== undefined;
+    const hasReal = activeRecord?.accounting_capture_pct !== null && activeRecord?.accounting_capture_pct !== undefined;
 
-    const papeleriaRecibida = hasReal ? Boolean(foundClient?.stationery_received) : true;
-    const capturaPct = hasReal ? Number(foundClient?.accounting_capture_pct) : 100;
-    const calculoListo = hasReal ? Boolean(foundClient?.tax_calculation) : true;
-    const presentadoListo = hasReal ? Boolean(foundClient?.tax_presented) : true;
-    const diotListo = hasReal ? Boolean(foundClient?.diot_presented) : false;
-    const efListo = hasReal ? Boolean(foundClient?.financial_statements) : false;
-    const opinionStatus = hasReal ? (foundClient?.compliance_opinion || "Positiva") : "Positiva";
+    const papeleriaRecibida = hasReal ? Boolean(activeRecord?.stationery_received) : true;
+    const capturaPct = hasReal ? Number(activeRecord?.accounting_capture_pct) : 100;
+    const calculoListo = hasReal ? Boolean(activeRecord?.tax_calculation) : true;
+    const presentadoListo = hasReal ? Boolean(activeRecord?.tax_presented) : true;
+    const diotListo = hasReal ? Boolean(activeRecord?.diot_presented) : false;
+    const efListo = hasReal ? Boolean(activeRecord?.financial_statements) : false;
+    const opinionStatus = hasReal ? (activeRecord?.compliance_opinion || "Positiva") : "Positiva";
 
     return [
       {
         num: 1,
         name: "Papelería",
         status: papeleriaRecibida ? "Completado" : "Pendiente",
-        targetDate: "05 Ago 2026",
-        completedDate: foundClient?.stationery_date ? (foundClient.stationery_date === "CEROS" ? "Ceros" : foundClient.stationery_date === "pte" ? "Pendiente" : foundClient.stationery_date === "N/A" ? "N/A" : foundClient.stationery_date) : (papeleriaRecibida ? "Recibida" : "—"),
+        targetDate: "05 Del Mes",
+        completedDate: activeRecord?.stationery_date ? (activeRecord.stationery_date === "CEROS" ? "Ceros" : activeRecord.stationery_date === "pte" ? "Pendiente" : activeRecord.stationery_date === "N/A" ? "N/A" : activeRecord.stationery_date) : (papeleriaRecibida ? "Recibida" : "—"),
         responsible: accountant,
-        comments: foundClient?.stationery_date ? `Estatus: ${foundClient.stationery_date}` : (papeleriaRecibida ? "Recibida completa" : "Pendiente de recepción"),
+        comments: activeRecord?.stationery_date ? `Estatus: ${activeRecord.stationery_date}` : (papeleriaRecibida ? "Recibida completa" : "Pendiente de recepción"),
         docs: papeleriaRecibida ? 3 : 0,
       },
       {
@@ -447,23 +484,55 @@ export function ControlMensualDetail() {
             <div className="lg:col-span-8 space-y-6">
               {/* Avance de Contabilidad Card (Image 3) */}
               <Card className="p-5 border-border/80 shadow-xs space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-primary" />
                     <h3 className="text-sm font-bold text-foreground">
-                      Avance de contabilidad — Septiembre 2026
+                      Avance de contabilidad — {currentPeriod}
                     </h3>
                   </div>
-                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-normal">
-                    ✓ Mes completado
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {monthlyHistory.length > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] text-muted-foreground font-medium">Periodo:</span>
+                        <select
+                          value={currentPeriod}
+                          onChange={(e) => setSelectedPeriod(e.target.value)}
+                          className="h-7 text-xs font-semibold rounded-md border border-input bg-background text-foreground px-2 py-0.5 shadow-2xs focus-visible:outline-hidden"
+                        >
+                          {monthlyHistory.map((m: any) => (
+                            <option key={m.period} value={m.period}>
+                              {m.period} ({m.accounting_status})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    <Badge
+                      className={`text-xs font-normal ${
+                        clientData.accountingStatus === "Concluido" || clientData.progress === 100
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : clientData.accountingStatus === "Declarado"
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                          : clientData.accountingStatus === "En riesgo"
+                          ? "bg-rose-50 text-rose-700 border-rose-200"
+                          : "bg-amber-50 text-amber-700 border-amber-200"
+                      }`}
+                    >
+                      {clientData.accountingStatus}
+                    </Badge>
+                  </div>
                 </div>
 
                 <div className="space-y-1">
                   <div className="flex justify-end text-xs font-bold text-foreground">
-                    100%
+                    {clientData.progress}%
                   </div>
-                  <Progress value={100} indicatorClassName="bg-emerald-500" className="h-2" />
+                  <Progress
+                    value={clientData.progress}
+                    indicatorClassName={clientData.progress === 100 ? "bg-emerald-500" : clientData.progress > 50 ? "bg-blue-500" : "bg-amber-500"}
+                    className="h-2"
+                  />
                 </div>
 
                 {/* 8-Stage Checklist Table (Image 3) */}
@@ -713,6 +782,137 @@ export function ControlMensualDetail() {
               </Card>
             </div>
           </div>
+        </TabsContent>
+
+        {/* Tab 2: Contabilidad - Historial Completo de Periodos */}
+        <TabsContent value="contabilidad" className="pt-4 space-y-6">
+          <Card className="p-5 border-border/80 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                  <FileSpreadsheet className="h-4 w-4 text-primary" />
+                  Historial Contable y Declaraciones ({clientData.name})
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Registro histórico y trazabilidad de papelería, cálculo, declaraciones y DIOT por periodo.
+                </p>
+              </div>
+              <Badge variant="outline" className="text-xs font-normal">
+                {monthlyHistory.length} periodos registrados
+              </Badge>
+            </div>
+
+            {monthlyHistory.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-xs border border-dashed rounded-lg">
+                No hay historial registrado para este cliente aún.
+              </div>
+            ) : (
+              <div className="overflow-x-auto border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40 text-xs font-semibold">
+                      <TableHead>Periodo</TableHead>
+                      <TableHead>Estatus</TableHead>
+                      <TableHead className="text-right">Avance</TableHead>
+                      <TableHead>Papelería</TableHead>
+                      <TableHead className="text-center">Cálculo</TableHead>
+                      <TableHead className="text-center">Declaración SAT</TableHead>
+                      <TableHead className="text-center">DIOT</TableHead>
+                      <TableHead className="text-center">Estados Fin.</TableHead>
+                      <TableHead>Observaciones / Pendientes</TableHead>
+                      <TableHead className="text-right">Acción</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="text-xs">
+                    {monthlyHistory.map((row: any) => (
+                      <TableRow
+                        key={row.period}
+                        className={`hover:bg-muted/30 transition-colors ${
+                          row.period === currentPeriod ? "bg-primary/5 font-medium" : ""
+                        }`}
+                      >
+                        <TableCell className="font-bold text-foreground">
+                          {row.period}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] py-0 font-normal ${
+                              row.accounting_status === "Concluido" || row.accounting_capture_pct === 100
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : row.accounting_status === "Declarado"
+                                ? "bg-blue-50 text-blue-700 border-blue-200"
+                                : row.accounting_status === "En riesgo"
+                                ? "bg-rose-50 text-rose-700 border-rose-200"
+                                : "bg-amber-50 text-amber-700 border-amber-200"
+                            }`}
+                          >
+                            {row.accounting_status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-bold">
+                          {row.accounting_capture_pct}%
+                        </TableCell>
+                        <TableCell>
+                          {row.stationery_received ? (
+                            <span className="text-emerald-700 font-medium">
+                              {row.stationery_date || "Recibida"}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground italic text-[11px]">Pendiente</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {row.tax_calculation ? (
+                            <Check className="h-4 w-4 text-emerald-600 mx-auto" />
+                          ) : (
+                            <span className="text-muted-foreground text-[11px]">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {row.tax_presented ? (
+                            <Check className="h-4 w-4 text-emerald-600 mx-auto" />
+                          ) : (
+                            <span className="text-muted-foreground text-[11px]">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {row.diot_presented ? (
+                            <Check className="h-4 w-4 text-emerald-600 mx-auto" />
+                          ) : (
+                            <span className="text-muted-foreground text-[11px]">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {row.financial_statements ? (
+                            <Check className="h-4 w-4 text-emerald-600 mx-auto" />
+                          ) : (
+                            <span className="text-muted-foreground text-[11px]">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground max-w-[200px] truncate" title={row.accounting_notes}>
+                          {row.accounting_notes || "—"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-[11px] text-primary"
+                            onClick={() => {
+                              setSelectedPeriod(row.period);
+                              sileo.info({ title: `Periodo seleccionado: ${row.period}` });
+                            }}
+                          >
+                            Ver detalle
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </Card>
         </TabsContent>
       </Tabs>
 
