@@ -13,6 +13,7 @@ import { Link } from "react-router-dom"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
 import { useTheme } from "@/contexts/ThemeContext"
+import { useAuth } from "@/hooks/useAuth"
 import {
   Sidebar,
   SidebarContent,
@@ -25,6 +26,8 @@ import {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { logoUrl } = useTheme()
+  const { profile } = useAuth()
+  const isAdmin = profile?.role === 'admin'
 
   // Main navigation items matching Cárdenas & Cárdenas ERP design
   const mainNavItems = [
@@ -152,7 +155,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarContent className="bg-sidebar gap-1 py-3 px-2">
         <NavMain items={mainNavItems} />
-        <NavMain title="ADMINISTRACIÓN" items={adminNavItems} />
+        {isAdmin && <NavMain title="ADMINISTRACIÓN" items={adminNavItems} />}
       </SidebarContent>
 
       <SidebarFooter className="p-3 bg-sidebar border-t border-border/40 flex flex-col gap-2">

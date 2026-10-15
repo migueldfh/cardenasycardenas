@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { AdminLayout } from './layouts/AdminLayout';
 import { Login } from './pages/Login';
+import { ChangeTemporaryPassword } from './pages/ChangeTemporaryPassword';
 import { Users } from './pages/admin/Users';
 import { Settings } from './pages/admin/Settings';
 import { Clients } from './pages/admin/Clients';
@@ -44,6 +45,9 @@ function App() {
             <Routes>
               {/* Public Routes */}
               <Route path="/login" element={<Login />} />
+              <Route path="/cambiar-password" element={<ChangeTemporaryPassword />} />
+              <Route path="/establecer-contrasena" element={<Navigate to="/cambiar-password" replace />} />
+              <Route path="/reset-password" element={<Navigate to="/cambiar-password" replace />} />
               <Route path="/client-stock/:token" element={<ClientStock />} />
               <Route path="/quote/:token" element={<QuoteView />} />
               <Route path="/report-payment/:token" element={<ReportPayment />} />
@@ -54,7 +58,7 @@ function App() {
               <Route 
                 path="/" 
                 element={
-                  <ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}>
+                  <ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager', 'accountant']}>
                     <AdminLayout />
                   </ProtectedRoute>
                 }
@@ -62,43 +66,43 @@ function App() {
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 
                 {/* 1. Inicio / Dashboard */}
-                <Route path="dashboard" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><FinancesDashboard /></ProtectedRoute>} />
+                <Route path="dashboard" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager', 'accountant']}><FinancesDashboard /></ProtectedRoute>} />
                 
                 {/* 2. Operaciones */}
-                <Route path="control-mensual" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><ControlMensual /></ProtectedRoute>} />
-                <Route path="control-mensual/:id" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><ControlMensualDetail /></ProtectedRoute>} />
-                <Route path="contabilidades" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><Contabilidades /></ProtectedRoute>} />
-                <Route path="opiniones" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><OpinionesCumplimiento /></ProtectedRoute>} />
-                <Route path="pendientes" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><PendientesFiscales /></ProtectedRoute>} />
-                <Route path="calendario-fiscal" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><CalendarioFiscal /></ProtectedRoute>} />
+                <Route path="control-mensual" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager', 'accountant']}><ControlMensual /></ProtectedRoute>} />
+                <Route path="control-mensual/:id" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager', 'accountant']}><ControlMensualDetail /></ProtectedRoute>} />
+                <Route path="contabilidades" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager', 'accountant']}><Contabilidades /></ProtectedRoute>} />
+                <Route path="opiniones" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager', 'accountant']}><OpinionesCumplimiento /></ProtectedRoute>} />
+                <Route path="pendientes" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager', 'accountant']}><PendientesFiscales /></ProtectedRoute>} />
+                <Route path="calendario-fiscal" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager', 'accountant']}><CalendarioFiscal /></ProtectedRoute>} />
                 
                 {/* 3. Clientes */}
-                <Route path="clients" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><Clients /></ProtectedRoute>} />
-                <Route path="clients/:id" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><ClientDetail /></ProtectedRoute>} />
+                <Route path="clients" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager', 'accountant']}><Clients /></ProtectedRoute>} />
+                <Route path="clients/:id" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager', 'accountant']}><ClientDetail /></ProtectedRoute>} />
                 
                 {/* 4. Finanzas (In the same unified sidebar layout!) */}
-                <Route path="finances" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><FinancesDashboard /></ProtectedRoute>} />
-                <Route path="finances/ingresos" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><Ingresos /></ProtectedRoute>} />
-                <Route path="finances/gastos" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><Gastos /></ProtectedRoute>} />
-                <Route path="finances/cuentas-por-cobrar" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><CuentasPorCobrar /></ProtectedRoute>} />
-                <Route path="finances/cuentas-por-pagar" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><CuentasPorPagar /></ProtectedRoute>} />
-                <Route path="finances/transferencias" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><Transferencias /></ProtectedRoute>} />
-                <Route path="finances/categorias" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><Categorias /></ProtectedRoute>} />
-                <Route path="finances/metodos-pago" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><MetodosPago /></ProtectedRoute>} />
+                <Route path="finances" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager', 'accountant']}><FinancesDashboard /></ProtectedRoute>} />
+                <Route path="finances/ingresos" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'accountant']}><Ingresos /></ProtectedRoute>} />
+                <Route path="finances/gastos" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'accountant']}><Gastos /></ProtectedRoute>} />
+                <Route path="finances/cuentas-por-cobrar" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'accountant']}><CuentasPorCobrar /></ProtectedRoute>} />
+                <Route path="finances/cuentas-por-pagar" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'accountant']}><CuentasPorPagar /></ProtectedRoute>} />
+                <Route path="finances/transferencias" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'accountant']}><Transferencias /></ProtectedRoute>} />
+                <Route path="finances/categorias" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'accountant']}><Categorias /></ProtectedRoute>} />
+                <Route path="finances/metodos-pago" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'accountant']}><MetodosPago /></ProtectedRoute>} />
                 <Route path="finances/control-mensual" element={<Navigate to="/control-mensual" replace />} />
                 <Route path="finances/facturas" element={<Navigate to="/facturas" replace />} />
                 <Route path="finances/reportes" element={<Navigate to="/reportes" replace />} />
-                <Route path="finances/configuracion" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><Configuracion /></ProtectedRoute>} />
+                <Route path="finances/configuracion" element={<ProtectedRoute allowedRoles={['admin']}><Configuracion /></ProtectedRoute>} />
                 
                 {/* 5. Facturación */}
-                <Route path="facturas" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><Facturas /></ProtectedRoute>} />
+                <Route path="facturas" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'accountant']}><Facturas /></ProtectedRoute>} />
                 
                 {/* 6. Reportes */}
-                <Route path="reportes" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><Reportes /></ProtectedRoute>} />
+                <Route path="reportes" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'accountant']}><Reportes /></ProtectedRoute>} />
                 
                 {/* 7. Administración */}
-                <Route path="users" element={<ProtectedRoute allowedRoles={['admin', 'operator']}><Users /></ProtectedRoute>} />
-                <Route path="settings" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager']}><Settings /></ProtectedRoute>} />
+                <Route path="users" element={<ProtectedRoute allowedRoles={['admin']}><Users /></ProtectedRoute>} />
+                <Route path="settings" element={<ProtectedRoute allowedRoles={['admin']}><Settings /></ProtectedRoute>} />
 
                 {/* Operations URL Aliases */}
                 <Route path="operations/control-mensual" element={<Navigate to="/control-mensual" replace />} />

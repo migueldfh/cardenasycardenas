@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Mail, Lock } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -91,12 +91,12 @@ export function Login() {
                   />
                   <span>Recordarme</span>
                 </label>
-                <a
-                  href="#"
+                <Link
+                  to="/cambiar-password"
                   className="text-primary hover:underline underline-offset-2 font-medium"
                 >
                   ¿Olvidaste la contraseña?
-                </a>
+                </Link>
               </div>
 
               {error && <p className="text-xs text-destructive font-medium">{error}</p>}
@@ -109,6 +109,18 @@ export function Login() {
               >
                 {loading ? "Iniciando sesión..." : "Acceder"}
               </button>
+
+              {/* First-time / Temporary password setup link */}
+              <div className="pt-3 border-t border-border/60 text-center text-xs space-y-1">
+                <p className="text-muted-foreground">¿Primer ingreso o contraseña temporal?</p>
+                <Link
+                  to="/cambiar-password"
+                  className="inline-flex items-center gap-1.5 text-primary hover:underline font-semibold"
+                >
+                  <span>Establece tu contraseña personal aquí</span>
+                  <span aria-hidden="true">&rarr;</span>
+                </Link>
+              </div>
             </div>
           </form>
         </div>

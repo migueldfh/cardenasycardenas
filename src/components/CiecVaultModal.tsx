@@ -49,6 +49,7 @@ export function CiecVaultModal({
   clientRfc,
 }: CiecVaultModalProps) {
   const { profile } = useAuth();
+  const isAdmin = profile?.role === "admin";
   const [pin, setPin] = useState("");
   const [reason, setReason] = useState("Presentación de Declaración SAT");
   const [customReason, setCustomReason] = useState("");
@@ -97,6 +98,10 @@ export function CiecVaultModal({
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      setError("Acceso denegado: Solo el Administrador tiene autorización para acceder a la Bóveda SAT");
+      return;
+    }
     if (!clientId) return;
     if (!pin.trim()) {
       setError("Por favor ingresa el PIN de seguridad");
@@ -168,8 +173,29 @@ export function CiecVaultModal({
           </div>
         </DialogHeader>
 
-        {!decryptedCiec ? (
-          /* STEP 1: PIN CHALLENGE FORM */
+        {!isAdmin ? (
+          /* NON-ADMIN RESTRICTION VIEW */
+          <div className="space-y-4 py-3 text-xs">
+            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg text-center space-y-2">
+              <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 flex items-center justify-center mx-auto">
+                <Lock className="h-5 w-5" />
+              </div>
+              <h3 className="text-sm font-bold text-foreground">Acceso Restringido a Administradores</h3>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Por políticas de estricta seguridad fiscal, la Bóveda de credenciales CIEC cifradas solo puede ser consultada por usuarios con rol de <strong>Administrador</strong>.
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Si requieres esta contraseña para una gestión oficial ante el SAT, por favor solicítala directamente al Administrador.
+              </p>
+            </div>
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={onClose} className="w-full">
+                Entendido / Cerrar
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : !decryptedCiec ? (
+          /* STEP 1: PIN CHALLENGE FORM (ADMIN ONLY) */
           <form onSubmit={handleUnlock} className="space-y-4 py-2 text-xs">
             <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-900 dark:text-amber-200 space-y-1">
               <div className="flex items-center gap-1.5 font-semibold">

@@ -45,6 +45,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { sileo } from "sileo";
+import { useAuth } from "@/hooks/useAuth";
 import { CiecVaultModal } from "@/components/CiecVaultModal";
 import { useFinanceClients } from "../hooks";
 
@@ -77,6 +78,8 @@ interface ClientObligationRow {
 
 export function ControlMensual() {
   const navigate = useNavigate();
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === "admin";
   const { data: rawClients = [], isLoading } = useFinanceClients();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -662,17 +665,27 @@ export function ControlMensual() {
                     </TableCell>
                     <TableCell className="text-[11px] whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       {row.ciec ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => openVault(row.id, row.name, row.rfc, e)}
-                          className="h-6 px-1.5 text-[11px] font-mono text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/60 flex items-center gap-1.5"
-                          title="Bóveda Segura CIEC (SAT)"
-                        >
-                          <Lock className="h-3 w-3 text-emerald-600 shrink-0" />
-                          <span>••••••••</span>
-                          <span className="text-[10px] font-sans font-medium text-muted-foreground ml-0.5">Ver</span>
-                        </Button>
+                        isAdmin ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => openVault(row.id, row.name, row.rfc, e)}
+                            className="h-6 px-1.5 text-[11px] font-mono text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/60 flex items-center gap-1.5"
+                            title="Bóveda Segura CIEC (SAT)"
+                          >
+                            <Lock className="h-3 w-3 text-emerald-600 shrink-0" />
+                            <span>••••••••</span>
+                            <span className="text-[10px] font-sans font-medium text-muted-foreground ml-0.5">Ver</span>
+                          </Button>
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-mono bg-muted/70 px-1.5 py-0.5 rounded border border-border/60"
+                            title="Protegido en Bóveda SAT (Acceso exclusivo Administrador)"
+                          >
+                            <Lock className="h-2.5 w-2.5 text-muted-foreground/70" />
+                            <span>••••••••</span>
+                          </span>
+                        )
                       ) : (
                         <span className="text-muted-foreground text-[10px]">Sin CIEC</span>
                       )}
@@ -865,14 +878,18 @@ export function ControlMensual() {
                   <div className="flex items-center justify-between mt-1">
                     <span className="font-mono text-xs text-muted-foreground tracking-wider">••••••••</span>
                     {selectedClient.ciec ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => openVault(selectedClient.id, selectedClient.name, selectedClient.rfc, e)}
-                        className="h-5 px-1.5 text-[10px] bg-white dark:bg-card border-emerald-300 text-emerald-800 dark:text-emerald-300 gap-1 font-medium"
-                      >
-                        <Lock className="h-2.5 w-2.5 text-emerald-600" /> Desbloquear
-                      </Button>
+                      isAdmin ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => openVault(selectedClient.id, selectedClient.name, selectedClient.rfc, e)}
+                          className="h-5 px-1.5 text-[10px] bg-white dark:bg-card border-emerald-300 text-emerald-800 dark:text-emerald-300 gap-1 font-medium"
+                        >
+                          <Lock className="h-2.5 w-2.5 text-emerald-600" /> Desbloquear
+                        </Button>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground font-mono">Protegido (Admin)</span>
+                      )
                     ) : (
                       <span className="text-muted-foreground text-[10px]">Sin CIEC</span>
                     )}

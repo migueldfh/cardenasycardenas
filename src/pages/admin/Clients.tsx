@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +80,8 @@ export interface FiscalClient {
 }
 
 export function Clients() {
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === "admin";
   const { data: rawClients = [], isLoading, error } = useFinanceClients();
   const createClientMutation = useCreateFinanceClient();
   const updateClientMutation = useUpdateFinanceClient();
@@ -789,19 +792,29 @@ export function Clients() {
                           </TableCell>
                           <TableCell className="py-2.5" onClick={(e) => e.stopPropagation()}>
                             {c.ciec ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-6 px-2 text-[10px] gap-1.5 font-mono border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
-                                onClick={(e) => openVault(c.id, c.name, c.rfc, e)}
-                                title="Acceso seguro a Bóveda SAT (Requiere PIN)"
-                              >
-                                <Lock className="h-3 w-3 text-emerald-600" />
-                                <span>••••••••</span>
-                                <span className="text-[9px] font-sans font-semibold text-emerald-700 dark:text-emerald-300 underline">
-                                  Ver
+                              isAdmin ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 px-2 text-[10px] gap-1.5 font-mono border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                                  onClick={(e) => openVault(c.id, c.name, c.rfc, e)}
+                                  title="Acceso seguro a Bóveda SAT (Requiere PIN de Administrador)"
+                                >
+                                  <Lock className="h-3 w-3 text-emerald-600" />
+                                  <span>••••••••</span>
+                                  <span className="text-[9px] font-sans font-semibold text-emerald-700 dark:text-emerald-300 underline">
+                                    Ver
+                                  </span>
+                                </Button>
+                              ) : (
+                                <span
+                                  className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-mono bg-muted/60 px-2 py-0.5 rounded border border-border/60"
+                                  title="Protegido en Bóveda SAT (Acceso reservado a Administradores)"
+                                >
+                                  <Lock className="h-2.5 w-2.5 text-muted-foreground/70" />
+                                  <span>••••••••</span>
                                 </span>
-                              </Button>
+                              )
                             ) : (
                               <span className="text-muted-foreground/60 text-[11px] italic">Sin CIEC</span>
                             )}
@@ -1028,13 +1041,20 @@ export function Clients() {
                         Contraseña CIEC protegida mediante cifrado y auditoría obligatoria de accesos.
                       </p>
                       {selectedClient.ciec ? (
-                        <Button
-                          size="sm"
-                          className="w-full h-8 text-xs bg-[#1e3a5f] hover:bg-[#152a45] text-white gap-2 font-medium"
-                          onClick={(e) => openVault(selectedClient.id, selectedClient.name, selectedClient.rfc, e)}
-                        >
-                          <Lock className="h-3.5 w-3.5" /> Desbloquear Contraseña (PIN)
-                        </Button>
+                        isAdmin ? (
+                          <Button
+                            size="sm"
+                            className="w-full h-8 text-xs bg-[#1e3a5f] hover:bg-[#152a45] text-white gap-2 font-medium"
+                            onClick={(e) => openVault(selectedClient.id, selectedClient.name, selectedClient.rfc, e)}
+                          >
+                            <Lock className="h-3.5 w-3.5" /> Desbloquear Contraseña (PIN)
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2 py-2 px-3 rounded bg-muted/60 text-muted-foreground border border-border/60 text-xs">
+                            <Lock className="h-3.5 w-3.5 text-muted-foreground/70" />
+                            <span>Protegido (Solo Administradores)</span>
+                          </div>
+                        )
                       ) : (
                         <p className="text-muted-foreground italic text-[11px] py-1">
                           Sin contraseña CIEC registrada.

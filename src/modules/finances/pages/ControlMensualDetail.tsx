@@ -41,12 +41,15 @@ import {
 import { sileo } from "sileo";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
 import { CiecVaultModal } from "@/components/CiecVaultModal";
 import { useFinanceClients } from "../hooks";
 
 export function ControlMensualDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === "admin";
   const { data: clients = [], isLoading } = useFinanceClients();
   const [isVaultOpen, setIsVaultOpen] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<string>("");
@@ -440,15 +443,25 @@ export function ControlMensualDetail() {
                   ••••••••••••
                 </span>
                 {clientData.ciec ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setIsVaultOpen(true)}
-                    className="h-6 px-2 text-[10px] bg-white dark:bg-card border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100/50 text-emerald-800 dark:text-emerald-300 font-medium gap-1 shadow-xs"
-                  >
-                    <Lock className="h-3 w-3 text-emerald-600" /> Desbloquear
-                  </Button>
+                  isAdmin ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsVaultOpen(true)}
+                      className="h-6 px-2 text-[10px] bg-white dark:bg-card border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100/50 text-emerald-800 dark:text-emerald-300 font-medium gap-1 shadow-xs"
+                    >
+                      <Lock className="h-3 w-3 text-emerald-600" /> Desbloquear
+                    </Button>
+                  ) : (
+                    <span
+                      className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-mono bg-muted/70 px-2 py-0.5 rounded border border-border/60"
+                      title="Protegido en Bóveda SAT (Acceso exclusivo Administrador)"
+                    >
+                      <Lock className="h-2.5 w-2.5 text-muted-foreground/70" />
+                      <span>Protegido (Admin)</span>
+                    </span>
+                  )
                 ) : (
                   <span className="text-muted-foreground italic text-[11px]">No registrada</span>
                 )}

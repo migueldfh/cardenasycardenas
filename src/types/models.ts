@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'operator' | 'project_manager';
+export type UserRole = 'admin' | 'operator' | 'project_manager' | 'accountant';
 export type OrderStatus = 'draft' | 'production' | 'completed';
 export type ProcessStatus = 'pending' | 'ready' | 'in_progress' | 'paused' | 'completed';
 export type Priority = 'low' | 'medium' | 'high';

@@ -2,6 +2,7 @@ import * as React from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
 import { useUpdateClient } from "@/modules/inventory/hooks";
 import {
   ArrowLeft,
@@ -36,6 +37,8 @@ import { sileo } from "sileo";
 
 export function ClientDetail() {
   const { id } = useParams<{ id: string }>();
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === "admin";
 
   // Fetch client details
   const { data: client, isLoading: loadingClient, error: clientError } = useQuery<any>({
@@ -255,15 +258,25 @@ export function ClientDetail() {
                     ••••••••••••
                   </span>
                   {client.ciec ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setIsVaultOpen(true)}
-                      className="h-7 px-2.5 text-xs bg-white dark:bg-card border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100/50 text-emerald-800 dark:text-emerald-300 font-medium gap-1.5 shadow-xs"
-                    >
-                      <Lock className="h-3 w-3 text-emerald-600" /> Desbloquear Bóveda
-                    </Button>
+                    isAdmin ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setIsVaultOpen(true)}
+                        className="h-7 px-2.5 text-xs bg-white dark:bg-card border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100/50 text-emerald-800 dark:text-emerald-300 font-medium gap-1.5 shadow-xs"
+                      >
+                        <Lock className="h-3 w-3 text-emerald-600" /> Desbloquear Bóveda
+                      </Button>
+                    ) : (
+                      <span
+                        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground font-medium bg-muted/60 px-2.5 py-1 rounded border border-border/60"
+                        title="Protegido en Bóveda SAT (Acceso exclusivo para el Administrador)"
+                      >
+                        <Lock className="h-3 w-3 text-muted-foreground/70" />
+                        <span>Protegido (Admin)</span>
+                      </span>
+                    )
                   ) : (
                     <span className="text-muted-foreground italic text-xs">No registrada</span>
                   )}
