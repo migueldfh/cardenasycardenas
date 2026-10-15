@@ -125,7 +125,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   ]
 
   return (
-    <Sidebar variant="inset" {...props} className="bg-sidebar border-r border-border/80">
+    <Sidebar variant="inset" {...props} className="bg-sidebar">
       <SidebarHeader className="p-5 bg-sidebar border-b border-border/40">
         <SidebarMenu>
           <SidebarMenuItem className="flex items-center gap-3">

@@ -287,7 +287,7 @@ export function Clients() {
       rfc: "",
       personType: "Moral",
       regime: "Régimen General de Ley Personas Morales",
-      assignedAccountant: uniqueAccountants[0] || "Alejandra Díaz",
+      assignedAccountant: isAdmin ? (uniqueAccountants[0] || "Alejandra Díaz") : (profile?.full_name || ""),
       status: "Activo",
       economicActivity: "",
       contactName: "",
@@ -343,7 +343,7 @@ export function Clients() {
         invoice_email: clientForm.invoiceEmail.trim() || null,
         phone: clientForm.phone.trim() || null,
         ciec: clientForm.ciec.trim() || null,
-        assigned_accountant: clientForm.assignedAccountant.trim() || null,
+        assigned_accountant: isAdmin ? (clientForm.assignedAccountant.trim() || null) : (profile?.full_name || clientForm.assignedAccountant.trim() || null),
         notes: clientForm.notes.trim() || null,
         status: clientForm.status,
       });
@@ -376,7 +376,7 @@ export function Clients() {
           invoice_email: clientForm.invoiceEmail.trim() || null,
           phone: clientForm.phone.trim() || null,
           ciec: clientForm.ciec.trim() || null,
-          assigned_accountant: clientForm.assignedAccountant.trim() || null,
+          assigned_accountant: isAdmin ? (clientForm.assignedAccountant.trim() || null) : (profile?.full_name || clientForm.assignedAccountant.trim() || null),
           notes: clientForm.notes.trim() || null,
           status: clientForm.status,
         },
@@ -597,26 +597,33 @@ export function Clients() {
           </SelectContent>
         </Select>
 
-        <Select
-          value={accountantFilter}
-          onValueChange={(val) => {
-            setAccountantFilter(val);
-            setCurrentPage(1);
-          }}
-        >
-          <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/20">
-            <span className="text-muted-foreground mr-1">Contador:</span>
-            <SelectValue placeholder="Todos" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los contadores</SelectItem>
-            {uniqueAccountants.map((acc) => (
-              <SelectItem key={acc} value={acc}>
-                {acc}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {isAdmin ? (
+          <Select
+            value={accountantFilter}
+            onValueChange={(val) => {
+              setAccountantFilter(val);
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/20">
+              <span className="text-muted-foreground mr-1">Contador:</span>
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los contadores</SelectItem>
+              {uniqueAccountants.map((acc) => (
+                <SelectItem key={acc} value={acc}>
+                  {acc}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border/60 bg-muted/20 text-xs text-muted-foreground">
+            <UserCheck className="h-3.5 w-3.5 text-primary" />
+            <span className="font-medium text-foreground">{profile?.full_name || "Mis clientes"}</span>
+          </div>
+        )}
 
         <Select
           value={statusFilter}
@@ -1203,18 +1210,26 @@ export function Clients() {
                 </div>
                 <div className="space-y-1">
                   <label className="font-medium text-foreground">Contador(a) Asignado</label>
-                  <select
-                    value={clientForm.assignedAccountant}
-                    onChange={(e) => setClientForm({ ...clientForm, assignedAccountant: e.target.value })}
-                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 text-xs shadow-xs"
-                  >
-                    <option value="">-- Sin asignar --</option>
-                    {uniqueAccountants.map((acc) => (
-                      <option key={acc} value={acc}>
-                        {acc}
-                      </option>
-                    ))}
-                  </select>
+                  {isAdmin ? (
+                    <select
+                      value={clientForm.assignedAccountant}
+                      onChange={(e) => setClientForm({ ...clientForm, assignedAccountant: e.target.value })}
+                      className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 text-xs shadow-xs"
+                    >
+                      <option value="">-- Sin asignar --</option>
+                      {uniqueAccountants.map((acc) => (
+                        <option key={acc} value={acc}>
+                          {acc}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input
+                      disabled
+                      value={profile?.full_name || "Mi cuenta"}
+                      className="h-8 text-xs bg-muted/40 cursor-not-allowed"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -1380,18 +1395,26 @@ export function Clients() {
                 </div>
                 <div className="space-y-1">
                   <label className="font-medium text-foreground">Contador(a) Asignado</label>
-                  <select
-                    value={clientForm.assignedAccountant}
-                    onChange={(e) => setClientForm({ ...clientForm, assignedAccountant: e.target.value })}
-                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 text-xs shadow-xs"
-                  >
-                    <option value="">-- Sin asignar --</option>
-                    {uniqueAccountants.map((acc) => (
-                      <option key={acc} value={acc}>
-                        {acc}
-                      </option>
-                    ))}
-                  </select>
+                  {isAdmin ? (
+                    <select
+                      value={clientForm.assignedAccountant}
+                      onChange={(e) => setClientForm({ ...clientForm, assignedAccountant: e.target.value })}
+                      className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 text-xs shadow-xs"
+                    >
+                      <option value="">-- Sin asignar --</option>
+                      {uniqueAccountants.map((acc) => (
+                        <option key={acc} value={acc}>
+                          {acc}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input
+                      disabled
+                      value={clientForm.assignedAccountant || profile?.full_name || "Sin asignar"}
+                      className="h-8 text-xs bg-muted/40 cursor-not-allowed"
+                    />
+                  )}
                 </div>
               </div>
 

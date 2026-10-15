@@ -119,7 +119,7 @@ export function ClientDetail() {
           economic_activity: editForm.economic_activity.trim() || null,
           invoice_email: editForm.invoice_email.trim() || null,
           contact_person: editForm.contact_person.trim() || null,
-          assigned_accountant: editForm.assigned_accountant.trim() || null,
+          assigned_accountant: isAdmin ? (editForm.assigned_accountant.trim() || null) : client.assigned_accountant,
           notes: editForm.notes.trim() || null,
           person_type: editForm.person_type || "Moral",
           status: editForm.status || "Activo",
@@ -647,9 +647,11 @@ export function ClientDetail() {
                   </label>
                   <Input
                     id="edit-detail-accountant"
+                    disabled={!isAdmin}
                     value={editForm.assigned_accountant}
                     onChange={(e) => setEditForm({ ...editForm, assigned_accountant: e.target.value })}
                     placeholder="Nombre del contador"
+                    className={!isAdmin ? "bg-muted/40 cursor-not-allowed" : ""}
                   />
                 </div>
               </div>

@@ -28,6 +28,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Users,
+  UserCheck,
   CheckCircle2,
   Clock,
   AlertTriangle,
@@ -448,24 +449,31 @@ export function ControlMensual() {
 
       {/* Filter Bar */}
       <div className="bg-card p-3 rounded-lg border border-border/80 flex flex-wrap items-center gap-2.5 text-xs">
-        <Select
-          value={selectedContador}
-          onValueChange={(val) => {
-            setSelectedContador(val);
-            setCurrentPage(1);
-          }}
-        >
-          <SelectTrigger className="w-[150px] h-8 text-xs bg-muted/20">
-            <span className="text-muted-foreground mr-1">Contador:</span>
-            <SelectValue placeholder="Todos" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos ({uniqueContadores.length})</SelectItem>
-            {uniqueContadores.map((c) => (
-              <SelectItem key={c} value={c}>{c}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {isAdmin ? (
+          <Select
+            value={selectedContador}
+            onValueChange={(val) => {
+              setSelectedContador(val);
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[150px] h-8 text-xs bg-muted/20">
+              <span className="text-muted-foreground mr-1">Contador:</span>
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos ({uniqueContadores.length})</SelectItem>
+              {uniqueContadores.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border/60 bg-muted/20 text-xs text-muted-foreground">
+            <UserCheck className="h-3.5 w-3.5 text-primary" />
+            <span className="font-medium text-foreground">{profile?.full_name || "Mis clientes"}</span>
+          </div>
+        )}
 
         <Select
           value={selectedPersona}
