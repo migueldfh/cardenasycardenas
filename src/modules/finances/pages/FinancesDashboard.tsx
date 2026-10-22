@@ -3,15 +3,7 @@ import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -27,8 +19,6 @@ import {
   Clock,
   AlertTriangle,
   XCircle,
-  Search,
-  Calendar,
   ChevronRight,
   Check,
   Lock,
@@ -105,26 +95,6 @@ export function FinancesDashboard() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="relative w-64 hidden md:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar clientes, documentos, facturas..."
-              className="pl-9 h-9 text-xs bg-card"
-            />
-          </div>
-
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-[180px] h-9 text-xs bg-card">
-              <Calendar className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
-              <SelectValue placeholder="Mes" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Septiembre 2026">Septiembre 2026</SelectItem>
-              <SelectItem value="Agosto 2026">Agosto 2026</SelectItem>
-              <SelectItem value="Julio 2026">Julio 2026</SelectItem>
-            </SelectContent>
-          </Select>
-
           <Button size="sm" className="h-9 text-xs bg-[#1e3a5f] hover:bg-[#152a45]" asChild>
             <Link to="/finances/control-mensual">
               Control Mensual
@@ -493,13 +463,12 @@ export function FinancesDashboard() {
                       <TableCell className="text-center">
                         <Badge
                           variant="outline"
-                          className={`text-[10px] font-normal py-0 ${
-                            isComp
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : isRisk
+                          className={`text-[10px] font-normal py-0 ${isComp
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : isRisk
                               ? "bg-amber-50 text-amber-700 border-amber-200"
                               : "bg-blue-50 text-blue-700 border-blue-200"
-                          }`}
+                            }`}
                         >
                           {isComp ? "Completado" : isRisk ? "En riesgo" : "En proceso"}
                         </Badge>
