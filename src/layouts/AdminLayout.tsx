@@ -104,15 +104,6 @@ export function AdminLayout() {
             </Breadcrumb>
           </div>
 
-          {/* Center search input */}
-          <div className="relative flex-1 max-w-md hidden md:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Buscar clientes, documentos, facturas..."
-              className="pl-9 h-8.5 text-xs bg-muted/20 border-border/80 focus-visible:ring-1"
-            />
-          </div>
-
           {/* Right actions: Month Selector, Notification Bell, User Initial */}
           <div className="flex items-center gap-3">
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
@@ -132,15 +123,6 @@ export function AdminLayout() {
               <Bell className="h-4 w-4" />
               <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-background" />
             </button>
-
-            {/* Avatar Pill */}
-            <div className="flex items-center gap-2 pl-1 border-l border-border/60">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-[#1e3a5f] text-white text-xs font-semibold">
-                  AD
-                </AvatarFallback>
-              </Avatar>
-            </div>
           </div>
         </header>
         {/* Content */}
