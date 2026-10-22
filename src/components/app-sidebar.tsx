@@ -5,10 +5,7 @@ import {
   DollarSign,
   Receipt,
   BarChart3,
-  Settings as SettingsIcon,
-  HelpCircle,
 } from "lucide-react"
-import { Link } from "react-router-dom"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -21,7 +18,6 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
-  SidebarMenuButton,
 } from "@/components/ui/sidebar"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -116,12 +112,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       title: "Contadores / Usuarios",
       url: "/users",
       icon: Users,
-    },
-    {
-      title: "Configuración",
-      url: "/settings",
-      icon: SettingsIcon,
-    },
+    }
   ]
 
   return (
@@ -159,18 +150,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
 
       <SidebarFooter className="p-3 bg-sidebar border-t border-border/40 flex flex-col gap-2">
-        {/* Ayuda Link */}
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Centro de Ayuda">
-              <Link to="/settings" className="text-muted-foreground hover:text-foreground text-xs flex items-center gap-2">
-                <HelpCircle className="h-4 w-4" />
-                <span>Ayuda</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-
         <NavUser />
       </SidebarFooter>
     </Sidebar>
