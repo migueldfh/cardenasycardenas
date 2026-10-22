@@ -11,8 +11,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { Search, Calendar, Bell } from "lucide-react"
-import { Input } from "@/components/ui/input"
+import { Calendar, Bell } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -20,7 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 export function AdminLayout() {
   const location = useLocation()
