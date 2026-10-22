@@ -33,6 +33,26 @@ export interface IFinanceClient {
   review_date?: string | null;
   accounting_period?: string | null;
   accounting_status?: 'Completado' | 'En proceso' | 'Pendiente' | 'En riesgo' | 'Atrasado' | string | null;
+  contracted_services?: string[] | null;
+}
+
+export interface IClientDocument {
+  id: string;
+  client_id: string;
+  name: string;
+  category: string;
+  period?: string | null;
+  document_date?: string | null;
+  badge?: string | null;
+  notes?: string | null;
+  file_path?: string | null;
+  file_url?: string | null;
+  file_name?: string | null;
+  file_size?: number | null;
+  mime_type?: string | null;
+  uploaded_by?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export type DecretoProcessStage =

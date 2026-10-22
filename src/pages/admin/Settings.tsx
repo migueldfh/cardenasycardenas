@@ -35,6 +35,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { sileo } from "sileo";
+import { useActivityLogs } from "@/modules/finances/hooks";
+import { formatActivityLog, logActivity } from "@/api/logs";
 
 export function Settings() {
   const { profile } = useAuth();
@@ -67,6 +69,24 @@ export function Settings() {
   // SAT Vault Audit logs state
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const { data: globalRawLogs = [] } = useActivityLogs(60);
+  const [globalLogFilter, setGlobalLogFilter] = useState<string>("all");
+  const [globalLogSearch, setGlobalLogSearch] = useState<string>("");
+
+  const formattedGlobalLogs = globalRawLogs
+    .map((log) => formatActivityLog(log))
+    .filter((item) => {
+      const matchCat = globalLogFilter === "all" || item.category === globalLogFilter;
+      const q = globalLogSearch.trim().toLowerCase();
+      const matchSearch =
+        !q ||
+        item.title.toLowerCase().includes(q) ||
+        item.description.toLowerCase().includes(q) ||
+        (item.clientName || "").toLowerCase().includes(q) ||
+        item.actorName.toLowerCase().includes(q) ||
+        item.action.toLowerCase().includes(q);
+      return matchCat && matchSearch;
+    });
 
   const fetchAuditLogs = async () => {
     setIsLoadingLogs(true);
@@ -239,6 +259,13 @@ export function Settings() {
     setIsSaving(true);
     try {
       await saveCorporateBranding(palette, mode, customColors, logoUrl, loginImageUrl);
+      void logActivity("CORPORATE_BRANDING_SAVED", {
+        module: "configuracion",
+        palette,
+        mode,
+        title: "Identidad corporativa actualizada",
+        description: `Se guardó la identidad corporativa (${palette}, modo ${mode})`,
+      });
       sileo.success({ 
         title: "Identidad guardada", 
         description: "La configuración de apariencia, logo e imagen de inicio de sesión se han guardado como valores corporativos." 
@@ -729,6 +756,106 @@ export function Settings() {
                 </Table>
               </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* BITÁCORA GLOBAL DE MOVIMIENTOS Y LÓGICA DE NEGOCIO */}
+      <Card className="shadow-sm border-primary/20">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 space-y-0">
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              Bitácora Global de Movimientos y Lógica de Negocio
+            </CardTitle>
+            <CardDescription>
+              Registro auditable en tiempo real de cada movimiento en la aplicación y transiciones de lógica contable, fiscal, documentos y facturación.
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Buscar cliente, acción o usuario..."
+              value={globalLogSearch}
+              onChange={(e) => setGlobalLogSearch(e.target.value)}
+              className="h-8 text-xs w-56"
+            />
+            <Badge variant="outline" className="text-xs whitespace-nowrap">
+              {formattedGlobalLogs.length} registros
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { id: "all", label: "Todos" },
+              { id: "contabilidad", label: "Contabilidad e Impuestos" },
+              { id: "cumplimiento", label: "Opiniones 32-D" },
+              { id: "documentos", label: "Expediente Digital" },
+              { id: "clientes", label: "Clientes y Servicios" },
+              { id: "finanzas", label: "Finanzas y Facturación" },
+              { id: "seguridad", label: "Bóveda SAT" },
+              { id: "sistema", label: "Sistema" },
+            ].map((cat) => (
+              <Button
+                key={cat.id}
+                type="button"
+                size="sm"
+                variant={globalLogFilter === cat.id ? "default" : "outline"}
+                onClick={() => setGlobalLogFilter(cat.id)}
+                className="h-7 text-xs px-2.5"
+              >
+                {cat.label}
+              </Button>
+            ))}
+          </div>
+
+          <div className="rounded-md border border-border/60 overflow-hidden overflow-x-auto max-h-[380px]">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40 text-[11px]">
+                  <TableHead className="py-2">Fecha / Hora</TableHead>
+                  <TableHead className="py-2">Movimiento / Regla de Negocio</TableHead>
+                  <TableHead className="py-2">Cliente</TableHead>
+                  <TableHead className="py-2">Detalle</TableHead>
+                  <TableHead className="py-2">Responsable</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="text-xs">
+                {formattedGlobalLogs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      No se encontraron movimientos con los filtros seleccionados.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  formattedGlobalLogs.map((item) => (
+                    <TableRow key={item.id} className="hover:bg-muted/20">
+                      <TableCell className="font-mono text-[11px] whitespace-nowrap text-muted-foreground">
+                        {item.formattedDate}
+                      </TableCell>
+                      <TableCell className="font-semibold text-[11px] whitespace-nowrap text-foreground">
+                        {item.title}
+                      </TableCell>
+                      <TableCell className="text-[11px] whitespace-nowrap">
+                        {item.clientName ? (
+                          <Badge variant="outline" className="text-[10px] font-medium">
+                            {item.clientName}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-[11px] max-w-[320px] truncate text-muted-foreground" title={item.description}>
+                        {item.description}
+                      </TableCell>
+                      <TableCell className="text-[11px] whitespace-nowrap font-medium">
+                        {item.actorName}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>

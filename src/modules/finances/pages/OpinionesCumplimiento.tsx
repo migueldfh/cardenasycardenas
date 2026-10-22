@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { sileo } from "sileo";
 import { useFinanceClients } from "../hooks";
+import { logActivity } from "@/api/logs";
 
 export function OpinionesCumplimiento() {
   const { data: rawClients = [], isLoading } = useFinanceClients();
@@ -111,6 +112,12 @@ export function OpinionesCumplimiento() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    logActivity("OPINIONES_CSV_EXPORTED", {
+      count: filtered.length,
+      title: "Reporte de opiniones 32-D exportado a CSV",
+      description: `Exportación de ${filtered.length} opiniones de cumplimiento 32-D.`,
+      category: "cumplimiento",
+    });
     sileo.success({ title: `Exportadas ${filtered.length} opiniones a CSV` });
   };
 
@@ -131,7 +138,15 @@ export function OpinionesCumplimiento() {
             variant="outline"
             size="sm"
             className="h-8 text-xs gap-1.5"
-            onClick={() => sileo.success({ title: "Consulta masiva con el SAT iniciada para los clientes" })}
+            onClick={() => {
+              logActivity("OPINIONES_SAT_SYNCED", {
+                totalClients: totalOpiniones,
+                title: "Sincronización masiva 32-D con el SAT",
+                description: `Se ejecutó la consulta masiva de Opiniones de Cumplimiento 32-D para ${totalOpiniones} clientes.`,
+                category: "cumplimiento",
+              });
+              sileo.success({ title: "Consulta masiva con el SAT iniciada para los clientes" });
+            }}
           >
             <RefreshCw className="h-3.5 w-3.5" /> Sincronizar con SAT
           </Button>

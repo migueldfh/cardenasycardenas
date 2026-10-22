@@ -61,7 +61,8 @@ import {
   Cell,
 } from "recharts";
 import { sileo } from "sileo";
-import { useFinanceClients } from "@/modules/finances/hooks";
+import { useFinanceClients, useActivityLogs } from "@/modules/finances/hooks";
+import { formatActivityLog, logActivity } from "@/api/logs";
 
 interface ContadorItem {
   id: string;
@@ -91,6 +92,7 @@ const baseContadoresTeam = [
 
 export function Contadores() {
   const { data: clients = [] } = useFinanceClients();
+  const { data: rawLogs = [] } = useActivityLogs(60);
 
   const contadores: ContadorItem[] = useMemo(() => {
     return baseContadoresTeam.map((c) => {
@@ -138,6 +140,23 @@ export function Contadores() {
       return acc.includes(firstName) || acc.includes(selectedContador.name.toLowerCase());
     });
   }, [clients, selectedContador]);
+
+  const selectedContadorLogs = useMemo(() => {
+    const formatted = rawLogs.map((l) => formatActivityLog(l));
+    if (!selectedContador) return formatted.slice(0, 12);
+    const firstName = selectedContador.name.toLowerCase().split(" ")[0];
+    const clientIds = new Set(selectedContadorClients.map((c) => c.id));
+    const clientNames = new Set(selectedContadorClients.map((c) => (c.name || "").toLowerCase()));
+
+    const matched = formatted.filter((item) => {
+      const actorMatch = item.actorName.toLowerCase().includes(firstName);
+      const idMatch = item.clientId && clientIds.has(item.clientId);
+      const nameMatch = item.clientName && clientNames.has(item.clientName.toLowerCase());
+      return actorMatch || idMatch || nameMatch;
+    });
+
+    return matched.length > 0 ? matched.slice(0, 15) : formatted.slice(0, 10);
+  }, [rawLogs, selectedContador, selectedContadorClients]);
 
   const filteredContadores = useMemo(() => {
     return contadores
@@ -636,6 +655,88 @@ export function Contadores() {
                     )}
                   </div>
                 </TabsContent>
+
+                <TabsContent value="actividad" className="pt-3 space-y-2 text-xs">
+                  <div className="flex items-center justify-between pb-1">
+                    <span className="font-semibold text-foreground text-xs">
+                      Bitácora de movimientos ({selectedContadorLogs.length})
+                    </span>
+                    <Badge variant="outline" className="text-[10px]">
+                      Tiempo real
+                    </Badge>
+                  </div>
+                  <div className="max-h-[300px] overflow-y-auto space-y-2.5 pr-1 divide-y divide-border/60">
+                    {selectedContadorLogs.length === 0 ? (
+                      <p className="text-muted-foreground italic text-center py-4">
+                        Sin movimientos recientes registrados.
+                      </p>
+                    ) : (
+                      selectedContadorLogs.map((item) => (
+                        <div key={item.id} className="pt-2.5 first:pt-0 flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`h-2 w-2 rounded-full shrink-0 ${
+                                  item.tone === "emerald"
+                                    ? "bg-emerald-500"
+                                    : item.tone === "purple"
+                                      ? "bg-purple-500"
+                                      : item.tone === "amber"
+                                        ? "bg-amber-500"
+                                        : item.tone === "rose"
+                                          ? "bg-rose-500"
+                                          : "bg-blue-500"
+                                }`}
+                              />
+                              <p className="font-semibold text-foreground truncate text-xs" title={item.title}>
+                                {item.title}
+                              </p>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5 pl-3.5">
+                              {item.description}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 pl-3.5">
+                              {item.relativeTime} {item.clientName ? `• ${item.clientName}` : ""}
+                            </p>
+                          </div>
+                          {item.clientId && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" asChild title="Ver control mensual">
+                              <Link to={`/control-mensual/${item.clientId}`}>
+                                <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                              </Link>
+                            </Button>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="documentos" className="pt-3 space-y-2 text-xs">
+                  <div className="flex items-center justify-between pb-1">
+                    <span className="font-semibold text-foreground text-xs">
+                      Expedientes gestionados
+                    </span>
+                    <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" asChild>
+                      <Link to="/control-mensual">Ir a Control Mensual →</Link>
+                    </Button>
+                  </div>
+                  <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 divide-y divide-border/60">
+                    {selectedContadorClients.slice(0, 8).map((client) => (
+                      <div key={client.id} className="pt-2 first:pt-0 flex items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-foreground truncate text-xs">{client.name}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            CSF, Opinión 32-D y Acuses SAT
+                          </p>
+                        </div>
+                        <Button variant="outline" size="sm" className="h-6 text-[10px] px-2" asChild>
+                          <Link to={`/control-mensual/${client.id}`}>Expediente</Link>
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
               </Tabs>
             </div>
           </Card>
@@ -725,6 +826,12 @@ export function Contadores() {
               size="sm"
               className="bg-[#1e3a5f] hover:bg-[#152a45]"
               onClick={() => {
+                void logActivity("CLIENT_ACCOUNTANT_ASSIGNED", {
+                  module: "contadores",
+                  accountant_name: selectedContador.name,
+                  title: "Asignación de cartera actualizada",
+                  description: `Se actualizó la asignación de cartera contable para ${selectedContador.name}`,
+                });
                 sileo.success({ title: "Asignación actualizada con éxito" });
                 setIsAssignModalOpen(false);
               }}

@@ -1,6 +1,7 @@
 import { supabase, supabaseFinances } from '@/lib/supabase';
 import type {
   IFinanceClient,
+  IClientDocument,
   IProject,
   IPaymentSchedule,
   IPayment,
@@ -81,6 +82,18 @@ export async function updateFinanceClient(
     notes?: string | null;
     person_type?: string | null;
     status?: string | null;
+    contracted_services?: string[] | null;
+    compliance_opinion?: string | null;
+    stationery_received?: boolean | null;
+    stationery_date?: string | null;
+    accounting_capture_pct?: number | null;
+    tax_calculation?: boolean | null;
+    tax_presented?: boolean | null;
+    diot_presented?: boolean | null;
+    financial_statements?: boolean | null;
+    accounting_notes?: string | null;
+    accounting_period?: string | null;
+    accounting_status?: string | null;
   }
 ): Promise<IFinanceClient> {
   const { data, error } = await supabase
@@ -93,10 +106,78 @@ export async function updateFinanceClient(
   if (error) throw new Error(error.message);
 
   const client = data as IFinanceClient;
-  logActivity('UPDATE_CLIENT', {
-    clientId: client.id,
-    name: client.name,
-  });
+  const periodLabel = payload.accounting_period || client.accounting_period || 'Octubre 2026';
+
+  const hasAccountingFields =
+    payload.compliance_opinion !== undefined ||
+    payload.stationery_received !== undefined ||
+    payload.stationery_date !== undefined ||
+    payload.accounting_capture_pct !== undefined ||
+    payload.tax_calculation !== undefined ||
+    payload.tax_presented !== undefined ||
+    payload.diot_presented !== undefined ||
+    payload.financial_statements !== undefined ||
+    payload.accounting_notes !== undefined ||
+    payload.accounting_status !== undefined;
+
+  if (hasAccountingFields) {
+    // Also sync to client_monthly_accounting so historical periods and DB triggers stay in sync
+    await supabase
+      .from('client_monthly_accounting')
+      .upsert(
+        {
+          client_id: client.id,
+          period: periodLabel,
+          compliance_opinion: client.compliance_opinion ?? 'Positiva',
+          stationery_received: client.stationery_received ?? false,
+          stationery_date: client.stationery_date ?? null,
+          accounting_capture_pct: client.accounting_capture_pct ?? 0,
+          tax_calculation: client.tax_calculation ?? false,
+          tax_presented: client.tax_presented ?? false,
+          diot_presented: client.diot_presented ?? false,
+          financial_statements: client.financial_statements ?? false,
+          accounting_notes: client.accounting_notes ?? null,
+          accounting_status: client.accounting_status ?? 'En proceso',
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'client_id,period' }
+      )
+      .then(({ error: syncErr }) => {
+        if (syncErr) {
+          // If client_monthly_accounting didn't fire an UPDATE trigger (e.g., first INSERT), log explicitly
+          logActivity('CLIENT_ACCOUNTING_UPDATED', {
+            client_id: client.id,
+            client_name: client.name,
+            period: periodLabel,
+            user_name: client.assigned_accountant || undefined,
+            title: `Control contable actualizado (${periodLabel})`,
+            description: `Se actualizaron las etapas contables de ${client.name} para ${periodLabel}.`,
+            category: 'contabilidad',
+            changes: payload,
+          });
+        }
+      });
+  } else if (payload.contracted_services !== undefined) {
+    logActivity('CLIENT_SERVICES_UPDATED', {
+      client_id: client.id,
+      client_name: client.name,
+      user_name: client.assigned_accountant || undefined,
+      services: payload.contracted_services,
+      title: 'Servicios contratados actualizados',
+      description: `Servicios activos configurados (${(payload.contracted_services || []).length}): ${(payload.contracted_services || []).join(', ') || 'Ninguno'}`,
+      category: 'servicios',
+    });
+  } else {
+    logActivity('UPDATE_CLIENT', {
+      client_id: client.id,
+      client_name: client.name,
+      name: client.name,
+      user_name: client.assigned_accountant || undefined,
+      title: 'Ficha fiscal del cliente actualizada',
+      description: `Actualización de datos fiscales y generales de ${client.name} (${client.tax_id_rfc || 'Sin RFC'}).`,
+      category: 'servicios',
+    });
+  }
 
   return client;
 }
@@ -1011,10 +1092,16 @@ export async function createInvoice(payload: {
   }
 
   logActivity('CREATE_INVOICE', {
+    client_id: payload.client_id,
     invoiceId: invoice.id,
     invoiceNumber: invoice.invoice_number,
+    invoice_number: invoice.invoice_number,
     total: invoice.total,
+    amount: invoice.total,
     projectCount: payload.project_ids.length,
+    title: `Factura ${invoice.invoice_number} emitida`,
+    description: `Emisión de factura ${invoice.invoice_number} por ${new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(invoice.total)} (${payload.project_ids.length} proyecto(s) vinculados).`,
+    category: 'finanzas',
   });
 
   return invoice;
@@ -1064,7 +1151,13 @@ export async function updateInvoice(
   }
 
   logActivity('UPDATE_INVOICE', {
+    client_id: invoice.client_id,
     invoiceId: id,
+    invoice_number: invoice.invoice_number,
+    status: invoice.status,
+    title: `Factura ${invoice.invoice_number} actualizada`,
+    description: `Actualización de factura ${invoice.invoice_number}${updatePayload.status ? ` (Estatus: ${updatePayload.status === 'paid' ? 'Pagada' : updatePayload.status === 'cancelled' ? 'Cancelada' : 'Pendiente'})` : ''}.`,
+    category: 'finanzas',
     changes: payload,
   });
 
@@ -1089,5 +1182,209 @@ export async function deleteInvoice(id: string): Promise<void> {
     invoiceId: id,
   });
 }
+
+// ─── Client Documents & Supabase Storage API ────────────────────────
+
+export async function fetchClientDocuments(clientId: string): Promise<IClientDocument[]> {
+  const { data, error } = await supabase
+    .from('client_documents')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data || []) as IClientDocument[];
+}
+
+export async function uploadClientDocumentFile(
+  clientId: string,
+  file: File
+): Promise<{
+  filePath: string;
+  fileUrl: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+}> {
+  const sanitizedName = file.name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]/g, '_');
+  const filePath = `${clientId}/${Date.now()}-${sanitizedName}`;
+
+  const { error } = await supabase.storage
+    .from('client-documents')
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: true,
+    });
+
+  if (error) throw new Error(error.message);
+
+  const { data } = supabase.storage.from('client-documents').getPublicUrl(filePath);
+  return {
+    filePath,
+    fileUrl: data.publicUrl,
+    fileName: file.name,
+    fileSize: file.size,
+    mimeType: file.type || 'application/octet-stream',
+  };
+}
+
+export async function createClientDocument(payload: {
+  client_id: string;
+  name: string;
+  category?: string;
+  period?: string | null;
+  document_date?: string | null;
+  badge?: string | null;
+  notes?: string | null;
+  file?: File | null;
+}): Promise<IClientDocument> {
+  let fileMeta: {
+    filePath: string | null;
+    fileUrl: string | null;
+    fileName: string | null;
+    fileSize: number | null;
+    mimeType: string | null;
+  } = {
+    filePath: null,
+    fileUrl: null,
+    fileName: null,
+    fileSize: null,
+    mimeType: null,
+  };
+
+  if (payload.file) {
+    fileMeta = await uploadClientDocumentFile(payload.client_id, payload.file);
+  }
+
+  const { data, error } = await supabase
+    .from('client_documents')
+    .insert({
+      client_id: payload.client_id,
+      name: payload.name,
+      category: payload.category || 'Importante',
+      period: payload.period || null,
+      document_date: payload.document_date || null,
+      badge: payload.badge || null,
+      notes: payload.notes || null,
+      file_path: fileMeta.filePath,
+      file_url: fileMeta.fileUrl,
+      file_name: fileMeta.fileName,
+      file_size: fileMeta.fileSize,
+      mime_type: fileMeta.mimeType,
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  logActivity('CREATE_CLIENT_DOCUMENT', {
+    client_id: payload.client_id,
+    clientId: payload.client_id,
+    documentName: payload.name,
+    doc_type: payload.category || 'Importante',
+    period: payload.period || 'General',
+    title: `Documento cargado: ${payload.name}`,
+    description: `Se subió "${payload.name}" (${payload.category || 'Importante'}) al expediente digital${payload.period ? ` — ${payload.period}` : ''}.`,
+    category: 'documentos',
+  });
+
+  return data as IClientDocument;
+}
+
+export async function updateClientDocument(
+  id: string,
+  payload: {
+    client_id: string;
+    name?: string;
+    category?: string;
+    period?: string | null;
+    document_date?: string | null;
+    badge?: string | null;
+    notes?: string | null;
+    file?: File | null;
+    existing_file_path?: string | null;
+  }
+): Promise<IClientDocument> {
+  const updateData: Record<string, any> = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (payload.name !== undefined) updateData.name = payload.name;
+  if (payload.category !== undefined) updateData.category = payload.category;
+  if (payload.period !== undefined) updateData.period = payload.period;
+  if (payload.document_date !== undefined) updateData.document_date = payload.document_date;
+  if (payload.badge !== undefined) updateData.badge = payload.badge;
+  if (payload.notes !== undefined) updateData.notes = payload.notes;
+
+  if (payload.file) {
+    const fileMeta = await uploadClientDocumentFile(payload.client_id, payload.file);
+    updateData.file_path = fileMeta.filePath;
+    updateData.file_url = fileMeta.fileUrl;
+    updateData.file_name = fileMeta.fileName;
+    updateData.file_size = fileMeta.fileSize;
+    updateData.mime_type = fileMeta.mimeType;
+
+    if (payload.existing_file_path && payload.existing_file_path !== fileMeta.filePath) {
+      await supabase.storage
+        .from('client-documents')
+        .remove([payload.existing_file_path])
+        .catch(() => {});
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('client_documents')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  logActivity('UPDATE_CLIENT_DOCUMENT', {
+    documentId: id,
+    client_id: payload.client_id,
+    clientId: payload.client_id,
+    documentName: payload.name,
+    title: `Documento editado: ${payload.name || 'Expediente'}`,
+    description: `Se actualizaron los metadatos o archivo de "${payload.name || 'documento'}" en el expediente digital.`,
+    category: 'documentos',
+  });
+
+  return data as IClientDocument;
+}
+
+export async function deleteClientDocument(
+  id: string,
+  clientId: string,
+  filePath?: string | null
+): Promise<void> {
+  if (filePath) {
+    await supabase.storage
+      .from('client-documents')
+      .remove([filePath])
+      .catch(() => {});
+  }
+
+  const { error } = await supabase
+    .from('client_documents')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
+
+  logActivity('DELETE_CLIENT_DOCUMENT', {
+    documentId: id,
+    client_id: clientId,
+    clientId,
+    title: 'Documento eliminado del expediente',
+    description: `Se eliminó un archivo del expediente digital del cliente.`,
+    category: 'documentos',
+  });
+}
+
 
 

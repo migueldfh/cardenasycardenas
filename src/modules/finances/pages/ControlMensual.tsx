@@ -49,6 +49,7 @@ import { sileo } from "sileo";
 import { useAuth } from "@/hooks/useAuth";
 import { CiecVaultModal } from "@/components/CiecVaultModal";
 import { useFinanceClients } from "../hooks";
+import { logActivity } from "@/api/logs";
 
 interface ClientObligationRow {
   id: string;
@@ -311,6 +312,12 @@ export function ControlMensual() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    logActivity("CONTROL_MENSUAL_CSV_EXPORTED", {
+      count: displayRows.length,
+      title: "Control mensual exportado a CSV",
+      description: `Se exportaron ${displayRows.length} clientes del control mensual de obligaciones.`,
+      category: "contabilidad",
+    });
     sileo.success({ title: `Exportados ${displayRows.length} clientes a CSV` });
   };
 

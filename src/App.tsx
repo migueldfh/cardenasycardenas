@@ -15,6 +15,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 
 // Finances & Operations Pages (Cárdenas & Cárdenas)
 import { FinancesDashboard } from './modules/finances/pages/FinancesDashboard';
+import { FinancesOverview } from './modules/finances/pages/FinancesOverview';
 import { ControlMensual } from './modules/finances/pages/ControlMensual';
 import { ControlMensualDetail } from './modules/finances/pages/ControlMensualDetail';
 import { Contabilidades } from './modules/finances/pages/Contabilidades';
@@ -81,7 +82,7 @@ function App() {
                 <Route path="clients/:id" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager', 'accountant']}><ClientDetail /></ProtectedRoute>} />
                 
                 {/* 4. Finanzas (In the same unified sidebar layout!) */}
-                <Route path="finances" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager', 'accountant']}><FinancesDashboard /></ProtectedRoute>} />
+                <Route path="finances" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'project_manager', 'accountant']}><FinancesOverview /></ProtectedRoute>} />
                 <Route path="finances/ingresos" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'accountant']}><Ingresos /></ProtectedRoute>} />
                 <Route path="finances/gastos" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'accountant']}><Gastos /></ProtectedRoute>} />
                 <Route path="finances/cuentas-por-cobrar" element={<ProtectedRoute allowedRoles={['admin', 'operator', 'accountant']}><CuentasPorCobrar /></ProtectedRoute>} />

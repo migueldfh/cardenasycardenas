@@ -5,6 +5,12 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpdateClient } from "@/modules/inventory/hooks";
 import {
+  useClientDocuments,
+  useCreateClientDocument,
+  useUpdateClientDocument,
+  useDeleteClientDocument,
+} from "@/modules/finances/hooks";
+import {
   ArrowLeft,
   Loader2,
   Pencil,
@@ -19,6 +25,11 @@ import {
   Clock,
   FileText,
   Calendar,
+  Upload,
+  Eye,
+  Download,
+  Trash2,
+  FileUp,
 } from "lucide-react";
 import { CiecVaultModal } from "@/components/CiecVaultModal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,6 +67,97 @@ export function ClientDetail() {
   });
 
   const updateClientMutation = useUpdateClient();
+  const { data: dbDocuments = [] } = useClientDocuments(id || "");
+  const createDocMutation = useCreateClientDocument();
+  const updateDocMutation = useUpdateClientDocument();
+  const deleteDocMutation = useDeleteClientDocument();
+
+  // Document modal state
+  const [isDocModalOpen, setIsDocModalOpen] = React.useState(false);
+  const [editingDoc, setEditingDoc] = React.useState<any | null>(null);
+  const [docForm, setDocForm] = React.useState({
+    name: "",
+    category: "Importante",
+    document_date: "",
+    period: "",
+    badge: "",
+    notes: "",
+  });
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const handleOpenUploadDoc = (doc?: any) => {
+    if (doc && doc.id && !String(doc.id).startsWith("default-")) {
+      setEditingDoc(doc);
+      setDocForm({
+        name: doc.name || "",
+        category: doc.category || "Importante",
+        document_date: doc.document_date || "",
+        period: doc.period || client?.accounting_period || "Julio 2026",
+        badge: doc.badge || "",
+        notes: doc.notes || "",
+      });
+    } else {
+      setEditingDoc(null);
+      setDocForm({
+        name: doc?.name || "",
+        category: doc?.category || "Importante",
+        document_date:
+          doc?.document_date ||
+          new Date().toLocaleDateString("es-MX", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          }),
+        period: client?.accounting_period || "Julio 2026",
+        badge: doc?.badge || "",
+        notes: "",
+      });
+    }
+    setSelectedFile(null);
+    setIsDocModalOpen(true);
+  };
+
+  const handleSaveClientDoc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || !docForm.name.trim()) return;
+    try {
+      if (editingDoc) {
+        await updateDocMutation.mutateAsync({
+          id: editingDoc.id,
+          payload: {
+            client_id: id,
+            name: docForm.name.trim(),
+            category: docForm.category,
+            document_date: docForm.document_date.trim() || null,
+            period: docForm.period.trim() || null,
+            badge: docForm.badge.trim() || null,
+            notes: docForm.notes.trim() || null,
+            file: selectedFile,
+            existing_file_path: editingDoc.file_path,
+          },
+        });
+        sileo.success({ title: "Documento actualizado en Supabase Storage" });
+      } else {
+        await createDocMutation.mutateAsync({
+          client_id: id,
+          name: docForm.name.trim(),
+          category: docForm.category,
+          document_date: docForm.document_date.trim() || null,
+          period: docForm.period.trim() || null,
+          badge: docForm.badge.trim() || null,
+          notes: docForm.notes.trim() || null,
+          file: selectedFile,
+        });
+        sileo.success({ title: "Documento subido a Supabase Storage" });
+      }
+      setIsDocModalOpen(false);
+      setEditingDoc(null);
+      setSelectedFile(null);
+    } catch (err: any) {
+      sileo.error({ title: err.message || "Error al guardar el documento" });
+    }
+  };
 
   // Local state
   const [isEditOpen, setIsEditOpen] = React.useState(false);
@@ -493,6 +595,252 @@ export function ClientDetail() {
           </div>
         </Card>
       </div>
+
+      {/* 4. Expediente y Documentos del Cliente (Supabase Storage) */}
+      <Card className="border-border/80 shadow-xs">
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" /> Documentos Importantes (Supabase Storage)
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Sube, edita o descarga los documentos fiscales y contables del cliente
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs gap-1.5"
+              onClick={() => handleOpenUploadDoc()}
+            >
+              <Upload className="h-3.5 w-3.5 text-primary" /> Subir Documento
+            </Button>
+            <Button size="sm" variant="ghost" className="h-8 text-xs text-primary" asChild>
+              <Link to={`/control-mensual/${client.id}`}>Ver todos en Control Mensual →</Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="text-xs">
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { name: "Constancia de situación fiscal", document_date: "12 Ene 2025", category: "Importante" },
+              { name: "e.firma (CSD)", document_date: "15 Mar 2024", category: "Importante" },
+              { name: "Opinión de cumplimiento", document_date: "12 Sep 2026", category: "Importante", badge: client.compliance_opinion || "Positiva" },
+              { name: "Última declaración presentada", document_date: "08 Sep 2026", category: "Importante" },
+              { name: "Contrato de servicios", document_date: "10 Ene 2025", category: "Importante" },
+              ...dbDocuments.filter(
+                (d) =>
+                  ![
+                    "constancia de situación fiscal",
+                    "e.firma (csd)",
+                    "opinión de cumplimiento",
+                    "última declaración presentada",
+                    "contrato de servicios",
+                  ].includes(d.name.trim().toLowerCase())
+              ),
+            ].map((item: any, idx: number) => {
+              const dbDoc =
+                item.id
+                  ? item
+                  : dbDocuments.find(
+                      (d) => d.name.trim().toLowerCase() === item.name.trim().toLowerCase()
+                    ) || item;
+
+              return (
+                <div
+                  key={dbDoc.id || `slot-${idx}`}
+                  className="p-3 rounded-lg border border-border/60 bg-muted/20 flex items-center justify-between gap-2"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <FileText
+                      className={`h-4 w-4 shrink-0 ${
+                        dbDoc.file_url ? "text-emerald-600" : "text-blue-600"
+                      }`}
+                    />
+                    <div className="min-w-0">
+                      <p className="font-semibold text-foreground truncate">{dbDoc.name}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {dbDoc.document_date || "Sin fecha"}
+                        {dbDoc.file_name ? ` • ${dbDoc.file_name}` : " • Sin archivo"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {dbDoc.file_url && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-primary"
+                          asChild
+                          title="Ver documento"
+                        >
+                          <a href={dbDoc.file_url} target="_blank" rel="noopener noreferrer">
+                            <Eye className="h-3.5 w-3.5" />
+                          </a>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          asChild
+                          title="Descargar archivo"
+                        >
+                          <a
+                            href={dbDoc.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download={dbDoc.file_name || dbDoc.name}
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </a>
+                        </Button>
+                      </>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-primary"
+                      onClick={() => handleOpenUploadDoc(dbDoc)}
+                      title="Editar o subir archivo a Supabase Storage"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    {dbDoc.id && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() =>
+                          deleteDocMutation
+                            .mutateAsync({
+                              id: dbDoc.id,
+                              clientId: client.id,
+                              filePath: dbDoc.file_path,
+                            })
+                            .then(() =>
+                              sileo.success({ title: "Documento eliminado" })
+                            )
+                        }
+                        title="Eliminar documento"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Upload / Edit Client Document Modal */}
+      <Dialog open={isDocModalOpen} onOpenChange={setIsDocModalOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <form onSubmit={handleSaveClientDoc}>
+            <DialogHeader>
+              <DialogTitle>
+                {editingDoc ? `Editar: ${editingDoc.name}` : "Subir Documento (Supabase Storage)"}
+              </DialogTitle>
+              <DialogDescription>
+                Sube o actualiza el documento del cliente en Supabase Storage.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3.5 py-4 text-xs">
+              <div className="space-y-1">
+                <label className="font-semibold">Nombre del documento *</label>
+                <Input
+                  value={docForm.name}
+                  onChange={(e) => setDocForm({ ...docForm, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold">Fecha</label>
+                  <Input
+                    value={docForm.document_date}
+                    onChange={(e) =>
+                      setDocForm({ ...docForm, document_date: e.target.value })
+                    }
+                    placeholder="Ej. 12 Sep 2026"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold">Etiqueta / Estatus</label>
+                  <Input
+                    value={docForm.badge}
+                    onChange={(e) => setDocForm({ ...docForm, badge: e.target.value })}
+                    placeholder="Ej. Positiva, Vigente"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="font-semibold">Archivo</label>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary/60 bg-muted/20"
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null;
+                      setSelectedFile(f);
+                      if (f && !docForm.name.trim()) {
+                        setDocForm((prev) => ({
+                          ...prev,
+                          name: f.name.replace(/\.[^/.]+$/, ""),
+                        }));
+                      }
+                    }}
+                  />
+                  <FileUp className="h-6 w-6 mx-auto text-primary mb-1" />
+                  {selectedFile ? (
+                    <p className="font-semibold text-emerald-700">{selectedFile.name}</p>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      Haz clic para seleccionar archivo y subirlo a Supabase Storage
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="font-semibold">Notas</label>
+                <textarea
+                  rows={2}
+                  value={docForm.notes}
+                  onChange={(e) => setDocForm({ ...docForm, notes: e.target.value })}
+                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-xs"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsDocModalOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={createDocMutation.isPending || updateDocMutation.isPending}
+              >
+                {(createDocMutation.isPending || updateDocMutation.isPending) && (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                )}
+                Guardar Documento
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Client Modal */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>

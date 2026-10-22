@@ -1,81 +1,157 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Coins, CreditCard, Landmark, ShieldCheck } from "lucide-react";
+import {
+  CreditCard,
+  Landmark,
+  Coins,
+  ShieldCheck,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export function MetodosPago() {
-  const methods = [
+  const paymentChannels = [
     {
-      name: "Efectivo (Physical Cash)",
-      description: "Recibe pagos directamente en efectivo. Estos cobros entran a un flujo especial de Conciliación de Efectivo, donde se marcan como depositados una vez ingresados en cuentas bancarias físicas.",
+      title: "Efectivo (Physical Cash)",
+      description:
+        "Recepción y entrega de dinero físico en sucursal o cajas chicas.",
       icon: Coins,
       status: "Activo",
-      variant: "default" as const,
-      features: ["Control de depósito", "Fácil registro manual", "Cero comisiones"],
+      isAvailable: true,
+      features: [
+        "Liquidación inmediata",
+        "Sin comisiones bancarias",
+        "Requiere arqueo de caja manual",
+      ],
+      color: "text-emerald-600 bg-emerald-50 border-emerald-200",
     },
     {
-      name: "Transferencia Electrónica (SPEI / Banco)",
-      description: "Permite a los clientes subir folios y capturas de transferencias mediante enlaces públicos seguros, que luego los administradores revisan y aprueban.",
+      title: "Transferencia Electrónica (SPEI / Banco)",
+      description:
+        "Movimientos interbancarios directos a cuentas empresariales.",
       icon: Landmark,
       status: "Activo",
-      variant: "default" as const,
-      features: ["Aprobación de folio", "Enlace de reporte de cliente", "Conciliación manual rápida"],
+      isAvailable: true,
+      features: [
+        "Rastreabilidad total (CLABE / Referencia)",
+        "Conciliación mediante estados de cuenta",
+        "Ideal para B2B y proveedores",
+      ],
+      color: "text-blue-600 bg-blue-50 border-blue-200",
     },
     {
-      name: "Retiro sin Tarjeta (ATM)",
-      description: "Permite a los clientes proporcionar códigos de retiro en cajero automático (sin tarjeta). Los administradores retiran el efectivo físicamente en ventanilla o cajero y lo registran y concilian en Caja.",
-      icon: Coins,
+      title: "Retiro sin Tarjeta (ATM)",
+      description:
+        "Generación de códigos para cobro o pago en cajeros automáticos.",
+      icon: Landmark,
       status: "Activo",
-      variant: "default" as const,
-      features: ["Registro de código de retiro", "Ideal para cobros rápidos", "Conciliación manual en Caja"],
+      isAvailable: true,
+      features: [
+        "Útil para viáticos y gastos rápidos",
+        "Límite de monto por operación",
+        "Requiere confirmación de folio",
+      ],
+      color: "text-amber-600 bg-amber-50 border-amber-200",
     },
     {
-      name: "Tarjetas de Crédito / Débito",
-      description: "Infraestructura lista para recibir cobros en terminales físicas u online. Configuración integrada directamente al folio interno de venta.",
+      title: "Tarjetas de Crédito / Débito",
+      description:
+        "Cobros mediante terminal punto de venta (TPV) física o virtual.",
       icon: CreditCard,
-      status: "Listo para Integrar",
-      variant: "secondary" as const,
-      features: ["Registro manual de folios", "Soporte multifirma", "Preparado para SAT"],
+      status: "Activo",
+      isAvailable: true,
+      features: [
+        "Aceptación de Visa, Mastercard y Amex",
+        "Aplica comisión por transacción (~2.5% - 3.6%)",
+        "Liquidación en 24-48 hrs hábiles",
+      ],
+      color: "text-purple-600 bg-purple-50 border-purple-200",
     },
     {
-      name: "Pasarelas de Pago Online (Stripe / MercadoPago)",
-      description: "Arquitectura abierta para sincronizar enlaces de cobro automáticos con pasarelas de pago online. Permite cobros automáticos sin intervención manual del staff.",
+      title: "Pasarelas de Pago Online (Stripe / MercadoPago)",
+      description:
+        "Integración automática para cobros recurrentes o links de pago.",
       icon: ShieldCheck,
-      status: "Pendiente Configuración",
-      variant: "outline" as const,
-      features: ["Webhook API", "Cobro inmediato", "Soporte de IVA / Comisión cero"],
+      status: "Próximamente",
+      isAvailable: false,
+      features: [
+        "Conciliación automática vía Webhooks",
+        "Prevención de fraude integrada",
+        "Facturación automática al confirmar pago",
+      ],
+      color: "text-slate-600 bg-slate-100 border-slate-200",
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
+      {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Métodos de Pago y Pasarelas</h2>
-        <p className="text-muted-foreground text-sm">Control de canales de cobro y preparación para integraciones con procesadores de tarjetas.</p>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+          <span>Finanzas</span>
+          <span>›</span>
+          <span className="text-foreground font-medium">Métodos de Pago</span>
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          Métodos de Pago
+        </h1>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Canales habilitados en el sistema para el registro de ingresos, egresos y conciliación.
+        </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {methods.map((m, i) => {
-          const Icon = m.icon;
+      {/* Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {paymentChannels.map((channel, i) => {
+          const IconComponent = channel.icon;
           return (
-            <Card key={i} className="flex flex-col justify-between">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-2">
-                    <Icon className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-lg">{m.name}</CardTitle>
+            <Card
+              key={i}
+              className={`bg-card shadow-xs border-border/80 relative overflow-hidden transition-all ${
+                !channel.isAvailable ? "opacity-75 bg-muted/20" : ""
+              }`}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start gap-2">
+                  <div className={`p-2.5 rounded-lg border ${channel.color}`}>
+                    <IconComponent className="w-5 h-5" />
                   </div>
-                  <Badge variant={m.variant}>{m.status}</Badge>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                      channel.isAvailable
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-slate-100 text-slate-600 border-slate-200"
+                    }`}
+                  >
+                    {channel.isAvailable ? (
+                      <CheckCircle2 className="w-3 h-3" />
+                    ) : (
+                      <AlertCircle className="w-3 h-3" />
+                    )}
+                    {channel.status}
+                  </span>
                 </div>
-                <CardDescription className="pt-2 leading-relaxed">{m.description}</CardDescription>
+                <CardTitle className="mt-3 text-base font-bold text-foreground">
+                  {channel.title}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {channel.description}
+                </p>
               </CardHeader>
-              <CardContent className="pt-0">
-                <div className="border-t pt-3">
-                  <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2">Características</h4>
-                  <ul className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-                    {m.features.map((f, idx) => (
-                      <li key={idx} className="flex items-center gap-1.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                        {f}
+              <CardContent>
+                <div className="space-y-2 border-t border-border/60 pt-3 text-xs">
+                  <p className="font-semibold text-foreground/90 text-[11px] uppercase tracking-wider">
+                    Características operativas:
+                  </p>
+                  <ul className="space-y-1.5 text-muted-foreground">
+                    {channel.features.map((feat, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#1e3a5f] mt-1.5 shrink-0" />
+                        <span>{feat}</span>
                       </li>
                     ))}
                   </ul>

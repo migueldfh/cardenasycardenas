@@ -1,34 +1,68 @@
-import * as React from "react";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/hooks/useAuth";
+import { useState, useEffect } from "react";
+import {
+  Save,
+  Building2,
+  FileText,
+  CheckCircle2,
+  Loader2,
+  ShieldAlert,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { sileo } from "sileo";
-import { FileText, CheckCircle2, Plus, Trash2 } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
+import { logActivity } from "@/api/logs";
 
 export function Configuracion() {
   const { profile } = useAuth();
   const isAdmin = profile?.role === "admin";
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [activeTab, setActiveTab] = React.useState<"emisor1" | "emisor2">("emisor1");
-  const [form, setForm] = React.useState({
-    fiscal_rfc: "",
-    fiscal_name: "",
-    fiscal_regime: "601",
-    default_cfdi_use: "G03",
-    fiscal2_enabled: false,
-    fiscal2_rfc: "",
-    fiscal2_name: "",
-    fiscal2_regime: "601",
-    fiscal2_cfdi_use: "G03",
+  const [fiscalData, setFiscalData] = useState({
+    rfc: "XAXX010101000",
+    razonSocial: "Empresa S.A. de C.V.",
+    regimenFiscal: "601",
+    cp: "00000",
+    usoCfdiDefault: "G03",
+    ivaDefault: "16",
+    retencionIsr: "0",
+    retencionIva: "0",
+    serieFacturas: "F",
+    folioInicial: "1000",
   });
 
-  React.useEffect(() => {
-    async function loadSettings() {
+  const [fiscalData2, setFiscalData2] = useState({
+    rfc: "",
+    razonSocial: "",
+    regimenFiscal: "626",
+    cp: "",
+    usoCfdiDefault: "G03",
+    ivaDefault: "16",
+    retencionIsr: "0",
+    retencionIva: "0",
+    serieFacturas: "B",
+    folioInicial: "1",
+  });
+
+  useEffect(() => {
+    const loadSettings = async () => {
       try {
         const { data, error } = await supabase
           .from("app_settings")
@@ -37,67 +71,52 @@ export function Configuracion() {
           .single();
 
         if (error) throw error;
-        
-        if (data && data.other_settings) {
-          const fs = data.other_settings.fiscal || {};
-          const fs2 = data.other_settings.fiscal2 || {};
-          setForm({
-            fiscal_rfc: fs.rfc || "",
-            fiscal_name: fs.name || "",
-            fiscal_regime: fs.regime || "601",
-            default_cfdi_use: fs.cfdi_use || "G03",
-            
-            fiscal2_enabled: !!fs2.enabled || !!fs2.rfc || !!fs2.name,
-            fiscal2_rfc: fs2.rfc || "",
-            fiscal2_name: fs2.name || "",
-            fiscal2_regime: fs2.regime || "601",
-            fiscal2_cfdi_use: fs2.cfdi_use || "G03",
-          });
+        if (data?.other_settings?.fiscal) {
+          setFiscalData((prev) => ({
+            ...prev,
+            ...data.other_settings.fiscal,
+          }));
         }
-      } catch (err: any) {
-        console.error("Error loading settings:", err);
+        if (data?.other_settings?.fiscal2) {
+          setFiscalData2((prev) => ({
+            ...prev,
+            ...data.other_settings.fiscal2,
+          }));
+        }
+      } catch (error) {
+        console.error("Error loading fiscal settings:", error);
       } finally {
         setIsLoading(false);
       }
-    }
+    };
+
     loadSettings();
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) {
-      sileo.error({ title: "Solo los administradores pueden guardar configuraciones." });
+      toast.error("Solo los administradores pueden modificar la configuración.");
       return;
     }
 
+    setIsSaving(true);
     try {
-      // 1. Fetch current settings first to preserve other fields
-      const { data: current, error: fetchErr } = await supabase
+      const { data: currentData, error: fetchError } = await supabase
         .from("app_settings")
         .select("other_settings")
         .eq("id", "global")
         .single();
 
-      if (fetchErr) throw fetchErr;
+      if (fetchError && fetchError.code !== "PGRST116") throw fetchError;
 
       const updatedOtherSettings = {
-        ...(current?.other_settings || {}),
-        fiscal: {
-          rfc: form.fiscal_rfc,
-          name: form.fiscal_name,
-          regime: form.fiscal_regime,
-          cfdi_use: form.default_cfdi_use,
-        },
-        fiscal2: {
-          enabled: form.fiscal2_enabled,
-          rfc: form.fiscal2_rfc,
-          name: form.fiscal2_name,
-          regime: form.fiscal2_regime,
-          cfdi_use: form.fiscal2_cfdi_use,
-        },
+        ...(currentData?.other_settings || {}),
+        fiscal: fiscalData,
+        fiscal2: fiscalData2,
       };
 
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from("app_settings")
         .update({
           other_settings: updatedOtherSettings,
@@ -105,283 +124,492 @@ export function Configuracion() {
         })
         .eq("id", "global");
 
-      if (error) throw error;
-      sileo.success({ title: "Configuración fiscal guardada con éxito" });
-    } catch (err: any) {
-      sileo.error({ title: `Error al guardar: ${err.message}` });
+      if (updateError) throw updateError;
+      logActivity("FISCAL_CONFIG_SAVED", {
+        rfc: fiscalData.rfc,
+        razonSocial: fiscalData.razonSocial,
+        title: "Configuración fiscal del despacho guardada",
+        description: `Se actualizaron los parámetros fiscales y de facturación (${fiscalData.razonSocial} - ${fiscalData.rfc}).`,
+        category: "sistema",
+      });
+      toast.success(
+        "Configuración fiscal y parámetros guardados correctamente."
+      );
+    } catch (error) {
+      console.error("Error saving fiscal settings:", error);
+      toast.error("Error al guardar la configuración.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
+      {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Configuración de Facturación</h2>
-        <p className="text-muted-foreground text-sm">Configura la información fiscal emisora de tu empresa para la generación de CFDI 4.0 del SAT.</p>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+          <span>Finanzas</span>
+          <span>›</span>
+          <span className="text-foreground font-medium">
+            Configuración Financiera
+          </span>
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          Configuración Financiera
+        </h1>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Ajusta los parámetros fiscales, impuestos por defecto y preferencias de facturación.
+        </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="col-span-2">
+      {!isAdmin && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3.5 rounded-lg flex items-center gap-3 text-xs">
+          <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+          <p>
+            Estás en modo de solo lectura. Solo los usuarios con rol de{" "}
+            <strong>Administrador</strong> pueden realizar cambios en esta sección.
+          </p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
           <form onSubmit={handleSave}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" /> Datos del Emisor (RFC)
-              </CardTitle>
-              <CardDescription>
-                Define los datos predeterminados para el timbrado fiscal de facturas y notas de crédito.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex border-b border-border mb-4">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("emisor1")}
-                  className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${
-                    activeTab === "emisor1"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Emisor Principal {form.fiscal_name ? `(${form.fiscal_name})` : ""}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("emisor2")}
-                  className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors flex items-center gap-1.5 ${
-                    activeTab === "emisor2"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Segundo Emisor
-                  {form.fiscal2_enabled && form.fiscal2_name && ` (${form.fiscal2_name})`}
-                  {!form.fiscal2_enabled && (
-                    <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-normal text-muted-foreground">Inactivo</span>
-                  )}
-                </button>
-              </div>
+            <Tabs defaultValue="emisor1" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="emisor1" className="text-xs">
+                  RFC Principal (Emisor 1)
+                </TabsTrigger>
+                <TabsTrigger value="emisor2" className="text-xs">
+                  RFC Secundario (Emisor 2)
+                </TabsTrigger>
+              </TabsList>
 
-              {activeTab === "emisor1" ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <Label htmlFor="rfc_name">Razón Social del Emisor</Label>
-                      <Input
-                        id="rfc_name"
-                        value={form.fiscal_name}
-                        onChange={(e) => setForm({ ...form, fiscal_name: e.target.value })}
-                        placeholder="Ej: DECRETO SA DE CV"
-                        disabled={!isAdmin}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="rfc_val">RFC Emisor</Label>
-                      <Input
-                        id="rfc_val"
-                        value={form.fiscal_rfc}
-                        onChange={(e) => setForm({ ...form, fiscal_rfc: e.target.value.toUpperCase() })}
-                        placeholder="DEC160528XYZ"
-                        maxLength={13}
-                        disabled={!isAdmin}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <Label htmlFor="rfc_regime">Régimen Fiscal (SAT)</Label>
-                      <Select
-                        value={form.fiscal_regime}
-                        onValueChange={(val) => setForm({ ...form, fiscal_regime: val })}
-                        disabled={!isAdmin}
-                      >
-                        <SelectTrigger id="rfc_regime">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="601">601 - General de Ley Personas Morales</SelectItem>
-                          <SelectItem value="603">603 - Personas Morales con Fines no Lucrativos</SelectItem>
-                          <SelectItem value="626">626 - Régimen Simplificado de Confianza (RESICO)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label htmlFor="rfc_cfdi">Uso de CFDI por Defecto</Label>
-                      <Select
-                        value={form.default_cfdi_use}
-                        onValueChange={(val) => setForm({ ...form, default_cfdi_use: val })}
-                        disabled={!isAdmin}
-                      >
-                        <SelectTrigger id="rfc_cfdi">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="G01">G01 - Adquisición de mercancías</SelectItem>
-                          <SelectItem value="G03">G03 - Gastos en general</SelectItem>
-                          <SelectItem value="P01">P01 - Por definir</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {!form.fiscal2_enabled ? (
-                    <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed rounded-lg bg-muted/40 space-y-4">
-                      <div className="p-3 rounded-full bg-primary/10 text-primary">
-                        <Plus className="h-6 w-6" />
+              <TabsContent value="emisor1">
+                <Card className="bg-card shadow-xs border-border/80">
+                  <CardHeader className="pb-4 border-b border-border/60">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 bg-[#1e3a5f]/10 text-[#1e3a5f] rounded-lg">
+                        <Building2 className="w-4 h-4" />
                       </div>
-                      <div className="max-w-sm space-y-1">
-                        <p className="font-semibold text-sm">Habilitar Segundo Emisor</p>
+                      <div>
+                        <CardTitle className="text-sm font-bold">
+                          Datos Fiscales del Emisor Principal
+                        </CardTitle>
                         <p className="text-xs text-muted-foreground">
-                          Configura una segunda razón social para facturación si tu empresa timbra desde múltiples entidades fiscales.
+                          Información utilizada para el timbrado de facturas (CFDI 4.0) y reportes contables.
                         </p>
                       </div>
-                      {isAdmin && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setForm({ ...form, fiscal2_enabled: true })}
-                        >
-                          Habilitar Segundo Emisor
-                        </Button>
-                      )}
                     </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center bg-muted/50 p-3 rounded-lg border border-border/60">
-                        <span className="text-xs text-muted-foreground font-medium">Este emisor fiscal secundario está habilitado.</span>
-                        {isAdmin && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 flex items-center gap-1.5"
-                            onClick={() =>
-                              setForm({
-                                ...form,
-                                fiscal2_enabled: false,
-                                fiscal2_name: "",
-                                fiscal2_rfc: "",
+                  </CardHeader>
+                  <CardContent className="space-y-6 pt-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">RFC del Emisor</Label>
+                        <Input
+                          value={fiscalData.rfc}
+                          onChange={(e) =>
+                            setFiscalData({
+                              ...fiscalData,
+                              rfc: e.target.value.toUpperCase(),
+                            })
+                          }
+                          className="uppercase font-mono h-9 text-xs"
+                          disabled={!isAdmin}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Código Postal (Lugar de Expedición)</Label>
+                        <Input
+                          value={fiscalData.cp}
+                          onChange={(e) =>
+                            setFiscalData({ ...fiscalData, cp: e.target.value })
+                          }
+                          maxLength={5}
+                          className="h-9 text-xs"
+                          disabled={!isAdmin}
+                        />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <Label className="text-xs">Razón Social / Nombre Fiscal</Label>
+                        <Input
+                          value={fiscalData.razonSocial}
+                          onChange={(e) =>
+                            setFiscalData({
+                              ...fiscalData,
+                              razonSocial: e.target.value,
+                            })
+                          }
+                          className="h-9 text-xs"
+                          disabled={!isAdmin}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Régimen Fiscal</Label>
+                        <Select
+                          value={fiscalData.regimenFiscal}
+                          onValueChange={(v) =>
+                            setFiscalData({ ...fiscalData, regimenFiscal: v })
+                          }
+                          disabled={!isAdmin}
+                        >
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="601">
+                              601 - General de Ley Personas Morales
+                            </SelectItem>
+                            <SelectItem value="603">
+                              603 - Personas Morales con Fines no Lucrativos
+                            </SelectItem>
+                            <SelectItem value="612">
+                              612 - Personas Físicas con Actividades Empresariales
+                            </SelectItem>
+                            <SelectItem value="626">
+                              626 - Régimen Simplificado de Confianza (RESICO)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Uso de CFDI por Defecto</Label>
+                        <Select
+                          value={fiscalData.usoCfdiDefault}
+                          onValueChange={(v) =>
+                            setFiscalData({ ...fiscalData, usoCfdiDefault: v })
+                          }
+                          disabled={!isAdmin}
+                        >
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="G01">
+                              G01 - Adquisición de mercancías
+                            </SelectItem>
+                            <SelectItem value="G03">
+                              G03 - Gastos en general
+                            </SelectItem>
+                            <SelectItem value="P01">
+                              P01 - Por definir
+                            </SelectItem>
+                            <SelectItem value="S01">
+                              S01 - Sin efectos fiscales
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-border/60 pt-5">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-[#1e3a5f]" />
+                        Impuestos y Series de Facturación
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Tasa de IVA General (%)</Label>
+                          <Select
+                            value={fiscalData.ivaDefault}
+                            onValueChange={(v) =>
+                              setFiscalData({ ...fiscalData, ivaDefault: v })
+                            }
+                            disabled={!isAdmin}
+                          >
+                            <SelectTrigger className="h-9 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="16">16% (Tasa General)</SelectItem>
+                              <SelectItem value="8">8% (Frontera)</SelectItem>
+                              <SelectItem value="0">0% (Exento / Tasa 0)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Serie Interna</Label>
+                          <Input
+                            value={fiscalData.serieFacturas}
+                            onChange={(e) =>
+                              setFiscalData({
+                                ...fiscalData,
+                                serieFacturas: e.target.value.toUpperCase(),
                               })
                             }
-                          >
-                            <Trash2 className="h-4 w-4" /> Deshabilitar
-                          </Button>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <Label htmlFor="rfc_name2">Razón Social del Segundo Emisor</Label>
-                          <Input
-                            id="rfc_name2"
-                            value={form.fiscal2_name}
-                            onChange={(e) => setForm({ ...form, fiscal2_name: e.target.value })}
-                            placeholder="Ej: SEGUNDA ENTIDAD SA DE CV"
+                            placeholder="Ej: F, A, FAC"
+                            className="h-9 text-xs"
                             disabled={!isAdmin}
-                            required
                           />
                         </div>
-                        <div className="space-y-1">
-                          <Label htmlFor="rfc_val2">RFC Segundo Emisor</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Folio Inicial</Label>
                           <Input
-                            id="rfc_val2"
-                            value={form.fiscal2_rfc}
-                            onChange={(e) => setForm({ ...form, fiscal2_rfc: e.target.value.toUpperCase() })}
-                            placeholder="DEC160528XYZ"
-                            maxLength={13}
+                            type="number"
+                            value={fiscalData.folioInicial}
+                            onChange={(e) =>
+                              setFiscalData({
+                                ...fiscalData,
+                                folioInicial: e.target.value,
+                              })
+                            }
+                            className="h-9 text-xs"
                             disabled={!isAdmin}
-                            required
                           />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <Label htmlFor="rfc_regime2">Régimen Fiscal (SAT)</Label>
-                          <Select
-                            value={form.fiscal2_regime}
-                            onValueChange={(val) => setForm({ ...form, fiscal2_regime: val })}
-                            disabled={!isAdmin}
-                          >
-                            <SelectTrigger id="rfc_regime2">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="601">601 - General de Ley Personas Morales</SelectItem>
-                              <SelectItem value="603">603 - Personas Morales con Fines no Lucrativos</SelectItem>
-                              <SelectItem value="626">626 - Régimen Simplificado de Confianza (RESICO)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-1">
-                          <Label htmlFor="rfc_cfdi2">Uso de CFDI por Defecto</Label>
-                          <Select
-                            value={form.fiscal2_cfdi_use}
-                            onValueChange={(val) => setForm({ ...form, fiscal2_cfdi_use: val })}
-                            disabled={!isAdmin}
-                          >
-                            <SelectTrigger id="rfc_cfdi2">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="G01">G01 - Adquisición de mercancías</SelectItem>
-                              <SelectItem value="G03">G03 - Gastos en general</SelectItem>
-                              <SelectItem value="P01">P01 - Por definir</SelectItem>
-                            </SelectContent>
-                          </Select>
                         </div>
                       </div>
                     </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-            {isAdmin && (
-              <CardFooter className="border-t pt-4 flex justify-end">
-                <Button type="submit">Guardar Cambios</Button>
-              </CardFooter>
-            )}
+
+                    {isAdmin && (
+                      <div className="pt-4 flex justify-end border-t border-border/60">
+                        <Button
+                          type="submit"
+                          size="sm"
+                          className="h-9 text-xs bg-[#1e3a5f] hover:bg-[#152a45] text-white gap-1.5"
+                          disabled={isSaving}
+                        >
+                          {isSaving ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Save className="w-3.5 h-3.5" />
+                          )}
+                          {isSaving ? "Guardando..." : "Guardar Configuración"}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="emisor2">
+                <Card className="bg-card shadow-xs border-border/80">
+                  <CardHeader className="pb-4 border-b border-border/60">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 bg-indigo-500/10 text-indigo-600 rounded-lg">
+                        <Building2 className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-sm font-bold">
+                          Datos Fiscales del Emisor Secundario
+                        </CardTitle>
+                        <p className="text-xs text-muted-foreground">
+                          Configura una segunda razón social o RFC para manejo de múltiples razones sociales.
+                        </p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6 pt-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">RFC del Emisor 2</Label>
+                        <Input
+                          value={fiscalData2.rfc}
+                          onChange={(e) =>
+                            setFiscalData2({
+                              ...fiscalData2,
+                              rfc: e.target.value.toUpperCase(),
+                            })
+                          }
+                          placeholder="Ej: XAXX010101000"
+                          className="uppercase font-mono h-9 text-xs"
+                          disabled={!isAdmin}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Código Postal (Lugar de Expedición)</Label>
+                        <Input
+                          value={fiscalData2.cp}
+                          onChange={(e) =>
+                            setFiscalData2({ ...fiscalData2, cp: e.target.value })
+                          }
+                          placeholder="00000"
+                          maxLength={5}
+                          className="h-9 text-xs"
+                          disabled={!isAdmin}
+                        />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <Label className="text-xs">Razón Social / Nombre Fiscal 2</Label>
+                        <Input
+                          value={fiscalData2.razonSocial}
+                          onChange={(e) =>
+                            setFiscalData2({
+                              ...fiscalData2,
+                              razonSocial: e.target.value,
+                            })
+                          }
+                          placeholder="Nombre de la segunda entidad o persona física"
+                          className="h-9 text-xs"
+                          disabled={!isAdmin}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Régimen Fiscal</Label>
+                        <Select
+                          value={fiscalData2.regimenFiscal}
+                          onValueChange={(v) =>
+                            setFiscalData2({ ...fiscalData2, regimenFiscal: v })
+                          }
+                          disabled={!isAdmin}
+                        >
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="601">
+                              601 - General de Ley Personas Morales
+                            </SelectItem>
+                            <SelectItem value="603">
+                              603 - Personas Morales con Fines no Lucrativos
+                            </SelectItem>
+                            <SelectItem value="612">
+                              612 - Personas Físicas con Actividades Empresariales
+                            </SelectItem>
+                            <SelectItem value="626">
+                              626 - Régimen Simplificado de Confianza (RESICO)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Uso de CFDI por Defecto</Label>
+                        <Select
+                          value={fiscalData2.usoCfdiDefault}
+                          onValueChange={(v) =>
+                            setFiscalData2({ ...fiscalData2, usoCfdiDefault: v })
+                          }
+                          disabled={!isAdmin}
+                        >
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="G01">
+                              G01 - Adquisición de mercancías
+                            </SelectItem>
+                            <SelectItem value="G03">
+                              G03 - Gastos en general
+                            </SelectItem>
+                            <SelectItem value="P01">
+                              P01 - Por definir
+                            </SelectItem>
+                            <SelectItem value="S01">
+                              S01 - Sin efectos fiscales
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-border/60 pt-5">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                        Impuestos y Series de Facturación (Emisor 2)
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Tasa de IVA General (%)</Label>
+                          <Select
+                            value={fiscalData2.ivaDefault}
+                            onValueChange={(v) =>
+                              setFiscalData2({ ...fiscalData2, ivaDefault: v })
+                            }
+                            disabled={!isAdmin}
+                          >
+                            <SelectTrigger className="h-9 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="16">16% (Tasa General)</SelectItem>
+                              <SelectItem value="8">8% (Frontera)</SelectItem>
+                              <SelectItem value="0">0% (Exento / Tasa 0)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Serie Interna</Label>
+                          <Input
+                            value={fiscalData2.serieFacturas}
+                            onChange={(e) =>
+                              setFiscalData2({
+                                ...fiscalData2,
+                                serieFacturas: e.target.value.toUpperCase(),
+                              })
+                            }
+                            placeholder="Ej: B, F2"
+                            className="h-9 text-xs"
+                            disabled={!isAdmin}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Folio Inicial</Label>
+                          <Input
+                            type="number"
+                            value={fiscalData2.folioInicial}
+                            onChange={(e) =>
+                              setFiscalData2({
+                                ...fiscalData2,
+                                folioInicial: e.target.value,
+                              })
+                            }
+                            className="h-9 text-xs"
+                            disabled={!isAdmin}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {isAdmin && (
+                      <div className="pt-4 flex justify-end border-t border-border/60">
+                        <Button
+                          type="submit"
+                          size="sm"
+                          className="h-9 text-xs bg-[#1e3a5f] hover:bg-[#152a45] text-white gap-1.5"
+                          disabled={isSaving}
+                        >
+                          {isSaving ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Save className="w-3.5 h-3.5" />
+                          )}
+                          {isSaving ? "Guardando..." : "Guardar Configuración"}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </form>
-        </Card>
+        </div>
 
-
-        <Card className="col-span-1">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold flex items-center gap-1.5 text-muted-foreground uppercase">
-              <CheckCircle2 className="h-4 w-4 text-green-500" /> Fiscal Readiness
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-xs leading-relaxed text-muted-foreground">
-            <p>
-              Esta configuración establece los datos que se adjuntarán a los clientes y sus proyectos.
-            </p>
-            <p>
-              Al timbrar una factura, la API cruzará el RFC y Régimen Fiscal del cliente con estos datos del emisor para emitir un CFDI 4.0 válido.
-            </p>
-            <div className="border-t pt-3 space-y-2">
-              <span className="font-semibold text-foreground">Validaciones SAT:</span>
-              <ul className="list-disc pl-4 space-y-1">
-                <li>RFC de emisor y receptor válidos.</li>
-                <li>Nombre de emisor y receptor exactos en constancia fiscal.</li>
-                <li>Código postal fiscal coincidente.</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Estado de Integración SAT */}
+        <div className="space-y-4">
+          <Card className="bg-emerald-50/40 border-emerald-200 shadow-xs">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-emerald-800 flex items-center gap-2 text-sm font-bold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                Módulo Fiscal Activo
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-xs text-emerald-700 space-y-2 leading-relaxed">
+              <p>
+                El registro interno de ingresos, egresos y control de folios está completamente operativo.
+              </p>
+              <p className="text-[11px] text-emerald-600/80 pt-2 border-t border-emerald-200/60">
+                Nota: Para el timbrado directo ante el SAT (generación de XML y sello digital CSD), se requiere configurar las credenciales del PAC (Facturapi / Finkok) en las variables de entorno del servidor.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

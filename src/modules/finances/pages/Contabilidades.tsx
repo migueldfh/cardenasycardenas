@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { sileo } from "sileo";
 import { useFinanceClients } from "../hooks";
+import { logActivity } from "@/api/logs";
 
 export function Contabilidades() {
   const navigate = useNavigate();
@@ -113,6 +114,12 @@ export function Contabilidades() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    logActivity("CONTABILIDADES_CSV_EXPORTED", {
+      count: filtered.length,
+      title: "Reporte de contabilidades exportado a CSV",
+      description: `Se exportaron ${filtered.length} registros del padrón de contabilidades mensuales.`,
+      category: "contabilidad",
+    });
     sileo.success({ title: `Exportadas ${filtered.length} contabilidades a CSV` });
   };
 

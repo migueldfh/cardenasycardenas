@@ -51,7 +51,8 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { useFinancialStats, useFinanceClients } from "../hooks";
+import { useFinancialStats, useFinanceClients, useActivityLogs } from "../hooks";
+import { formatActivityLog } from "@/api/logs";
 
 // Mock data for the historical trend chart (Jan to Sep)
 const trendData = [
@@ -75,7 +76,10 @@ const donutData = [
 export function FinancesDashboard() {
   const { data: stats } = useFinancialStats();
   const { data: clients = [] } = useFinanceClients();
+  const { data: rawLogs = [] } = useActivityLogs(15);
   const [selectedMonth, setSelectedMonth] = useState("Septiembre 2026");
+
+  const recentActivityItems = rawLogs.slice(0, 5).map((log) => formatActivityLog(log));
 
   // Format currency
   const formatCurrency = (val: number) => {
@@ -615,66 +619,121 @@ export function FinancesDashboard() {
             <Clock className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-semibold text-foreground">Actividad reciente</h3>
           </div>
-          <Link to="/finances/reportes" className="text-xs text-blue-600 hover:underline">
+          <Link to="/control-mensual" className="text-xs text-blue-600 hover:underline">
             Ver toda la actividad →
           </Link>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <div className="flex items-start gap-2.5 p-2 rounded border border-border/40 bg-muted/20">
-            <div className="h-7 w-7 rounded bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
-              <FileText className="h-3.5 w-3.5" />
-            </div>
-            <div>
-              <span className="text-[10px] text-muted-foreground block">10:24</span>
-              <p className="text-xs font-medium text-foreground leading-tight">Papelería recibida</p>
-              <span className="text-[11px] text-muted-foreground">Solupatch</span>
-            </div>
-          </div>
+          {recentActivityItems.length > 0 ? (
+            recentActivityItems.map((item) => {
+              const toneStyles =
+                item.tone === "emerald"
+                  ? "bg-emerald-50 text-emerald-600"
+                  : item.tone === "purple"
+                    ? "bg-purple-50 text-purple-600"
+                    : item.tone === "amber"
+                      ? "bg-amber-50 text-amber-600"
+                      : item.tone === "rose"
+                        ? "bg-rose-50 text-rose-600"
+                        : "bg-blue-50 text-blue-600";
 
-          <div className="flex items-start gap-2.5 p-2 rounded border border-border/40 bg-muted/20">
-            <div className="h-7 w-7 rounded bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
-              <FileSpreadsheet className="h-3.5 w-3.5" />
-            </div>
-            <div>
-              <span className="text-[10px] text-muted-foreground block">09:15</span>
-              <p className="text-xs font-medium text-foreground leading-tight">Contabilidad actualizada</p>
-              <span className="text-[11px] text-muted-foreground">Comercial del Norte</span>
-            </div>
-          </div>
+              const IconComp =
+                item.category === "cumplimiento"
+                  ? ShieldCheck
+                  : item.category === "documentos"
+                    ? FileText
+                    : item.category === "finanzas"
+                      ? DollarSign
+                      : item.category === "clientes"
+                        ? Users
+                        : FileSpreadsheet;
 
-          <div className="flex items-start gap-2.5 p-2 rounded border border-border/40 bg-muted/20">
-            <div className="h-7 w-7 rounded bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 mt-0.5">
-              <ShieldCheck className="h-3.5 w-3.5" />
-            </div>
-            <div>
-              <span className="text-[10px] text-muted-foreground block">Ayer 17:42</span>
-              <p className="text-xs font-medium text-foreground leading-tight">Opinión consultada</p>
-              <span className="text-[11px] text-muted-foreground">Grupo Industrial MX</span>
-            </div>
-          </div>
+              const content = (
+                <div className="flex items-start gap-2.5 p-2 rounded border border-border/40 bg-muted/20 hover:bg-muted/40 transition-colors h-full">
+                  <div className={`h-7 w-7 rounded ${toneStyles} flex items-center justify-center shrink-0 mt-0.5`}>
+                    <IconComp className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[10px] text-muted-foreground block truncate">
+                      {item.relativeTime} • {item.actorName}
+                    </span>
+                    <p className="text-xs font-medium text-foreground leading-tight truncate" title={item.title}>
+                      {item.title}
+                    </p>
+                    <span className="text-[11px] text-muted-foreground block truncate" title={item.clientName || item.description}>
+                      {item.clientName || item.description}
+                    </span>
+                  </div>
+                </div>
+              );
 
-          <div className="flex items-start gap-2.5 p-2 rounded border border-border/40 bg-muted/20">
-            <div className="h-7 w-7 rounded bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 mt-0.5">
-              <DollarSign className="h-3.5 w-3.5" />
-            </div>
-            <div>
-              <span className="text-[10px] text-muted-foreground block">Ayer 12:31</span>
-              <p className="text-xs font-medium text-foreground leading-tight">Factura emitida</p>
-              <span className="text-[11px] text-muted-foreground">Servicios Profesionales</span>
-            </div>
-          </div>
+              return item.clientId ? (
+                <Link key={item.id} to={`/control-mensual/${item.clientId}`} className="block">
+                  {content}
+                </Link>
+              ) : (
+                <div key={item.id}>{content}</div>
+              );
+            })
+          ) : (
+            <>
+              <div className="flex items-start gap-2.5 p-2 rounded border border-border/40 bg-muted/20">
+                <div className="h-7 w-7 rounded bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <FileText className="h-3.5 w-3.5" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block">10:24</span>
+                  <p className="text-xs font-medium text-foreground leading-tight">Papelería recibida</p>
+                  <span className="text-[11px] text-muted-foreground">Solupatch</span>
+                </div>
+              </div>
 
-          <div className="flex items-start gap-2.5 p-2 rounded border border-border/40 bg-muted/20">
-            <div className="h-7 w-7 rounded bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
-              <Users className="h-3.5 w-3.5" />
-            </div>
-            <div>
-              <span className="text-[10px] text-muted-foreground block">Ayer 10:18</span>
-              <p className="text-xs font-medium text-foreground leading-tight">Nuevo cliente reg.</p>
-              <span className="text-[11px] text-muted-foreground">Constructora Delta</span>
-            </div>
-          </div>
+              <div className="flex items-start gap-2.5 p-2 rounded border border-border/40 bg-muted/20">
+                <div className="h-7 w-7 rounded bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <FileSpreadsheet className="h-3.5 w-3.5" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block">09:15</span>
+                  <p className="text-xs font-medium text-foreground leading-tight">Contabilidad actualizada</p>
+                  <span className="text-[11px] text-muted-foreground">Comercial del Norte</span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5 p-2 rounded border border-border/40 bg-muted/20">
+                <div className="h-7 w-7 rounded bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block">Ayer 17:42</span>
+                  <p className="text-xs font-medium text-foreground leading-tight">Opinión consultada</p>
+                  <span className="text-[11px] text-muted-foreground">Grupo Industrial MX</span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5 p-2 rounded border border-border/40 bg-muted/20">
+                <div className="h-7 w-7 rounded bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <DollarSign className="h-3.5 w-3.5" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block">Ayer 12:31</span>
+                  <p className="text-xs font-medium text-foreground leading-tight">Factura emitida</p>
+                  <span className="text-[11px] text-muted-foreground">Servicios Profesionales</span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5 p-2 rounded border border-border/40 bg-muted/20">
+                <div className="h-7 w-7 rounded bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <Users className="h-3.5 w-3.5" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block">Ayer 10:18</span>
+                  <p className="text-xs font-medium text-foreground leading-tight">Nuevo cliente reg.</p>
+                  <span className="text-[11px] text-muted-foreground">Constructora Delta</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </Card>
     </div>

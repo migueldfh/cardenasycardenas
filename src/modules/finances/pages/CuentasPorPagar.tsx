@@ -12,15 +12,31 @@ import { TablePagination } from "@/components/ui/TablePagination";
 import { uploadRemissionFile } from "../api";
 import { parseLocalDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
 import { sileo } from "sileo";
-import { Calendar, Check, AlertTriangle, FileText, ExternalLink, Paperclip, Loader2, Trash2, Search, X } from "lucide-react";
+import {
+  Calendar,
+  Check,
+  AlertTriangle,
+  FileText,
+  ExternalLink,
+  Paperclip,
+  Loader2,
+  Trash2,
+  Search,
+  X,
+  Coins,
+  TrendingDown,
+  Filter,
+  Download,
+} from "lucide-react";
 
 export function CuentasPorPagar() {
   const { data: expenses = [], isLoading } = useExpenses();
@@ -79,7 +95,7 @@ export function CuentasPorPagar() {
 
       await createRemissionMutation.mutateAsync({
         expense_id: currentExpense.id,
-        project_id: (remissionForm.project_id && remissionForm.project_id !== "none") ? remissionForm.project_id : null,
+        project_id: remissionForm.project_id && remissionForm.project_id !== "none" ? remissionForm.project_id : null,
         folio: remissionForm.folio,
         file_url,
         is_paid: isPaidNow,
@@ -163,7 +179,7 @@ export function CuentasPorPagar() {
 
     const diffTime = due.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 0) {
       return { days: diffDays, label: `Atrasada por ${Math.abs(diffDays)} días`, isOverdue: true };
     } else if (diffDays === 0) {
@@ -213,140 +229,264 @@ export function CuentasPorPagar() {
 
   const totalPages = Math.ceil(filteredBills.length / itemsPerPage);
   const paginatedBills = React.useMemo(() => {
-    return filteredBills.slice(
-      (currentPage - 1) * itemsPerPage,
-      currentPage * itemsPerPage
-    );
+    return filteredBills.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   }, [filteredBills, currentPage, itemsPerPage]);
 
   const totalAmountPending = pendingBills.reduce((sum, item) => sum + Number(item.amount), 0);
+  const totalNetDebt = pendingBills.reduce((sum, item) => sum + getExpenseDebt(item), 0);
+  const overdueBills = pendingBills.filter((b) => getDaysRemaining(b.due_date).isOverdue);
+  const overdueRatio = pendingBills.length > 0 ? (overdueBills.length / pendingBills.length) * 100 : 0;
+
+  const handleExportCSV = () => {
+    if (filteredBills.length === 0) return;
+    const headers = ["Proveedor", "Concepto", "Categoría", "Vencimiento", "Estatus", "Monto Total", "Saldo Pendiente"];
+    const rows = filteredBills.map((b) => [
+      `"${(b.supplier?.legal_name || "Proveedor General").replace(/"/g, '""')}"`,
+      `"${(b.concept || "-").replace(/"/g, '""')}"`,
+      `"${(b.category?.name || "Operaciones").replace(/"/g, '""')}"`,
+      b.due_date || "-",
+      `"${getDaysRemaining(b.due_date).label}"`,
+      Number(b.amount || 0).toFixed(2),
+      Number(getExpenseDebt(b)).toFixed(2),
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `cuentas_por_pagar_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Cuentas por Pagar (Proveedores)</h2>
-        <p className="text-muted-foreground text-sm">Control de obligaciones y facturas de proveedores pendientes de liquidar.</p>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+            <span>Finanzas</span>
+            <span>›</span>
+            <span className="text-foreground font-medium">Cuentas por Pagar</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Cuentas por Pagar (Proveedores)</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Control de obligaciones y facturas de proveedores pendientes de liquidar.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 text-xs gap-1.5"
+            onClick={handleExportCSV}
+            disabled={filteredBills.length === 0}
+          >
+            <Download className="h-3.5 w-3.5" /> Exportar CSV
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="bg-yellow-500/5 border-yellow-500/20">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-yellow-700 dark:text-yellow-500 font-semibold">Monto Total Pendiente</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-500">
+      {/* KPI Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="bg-card shadow-xs border-border/80 p-4 flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div className="h-9 w-9 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
+              <Coins className="h-4 w-4" />
+            </div>
+            <Badge variant="outline" className="text-[10px] font-medium bg-amber-50/60 text-amber-700 border-amber-200">
+              Total facturado
+            </Badge>
+          </div>
+          <div className="mt-3">
+            <p className="text-[11px] text-muted-foreground font-medium">Monto Total Pendiente</p>
+            <h3 className="text-xl font-bold text-amber-600 leading-tight mt-0.5">
               {formatCurrency(totalAmountPending)}
-            </div>
-          </CardContent>
+            </h3>
+          </div>
+          <div className="mt-3 space-y-1">
+            <Progress value={100} indicatorClassName="bg-amber-500" className="h-1.5" />
+            <p className="text-[10px] text-muted-foreground">Importe bruto de facturas a crédito</p>
+          </div>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Cuentas Pendientes</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pendingBills.length} facturas</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-red-500/5 border-red-500/20">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-red-700 dark:text-red-500 font-semibold">Cuentas Vencidas</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-700 dark:text-red-500">
-              {pendingBills.filter((b) => getDaysRemaining(b.due_date).isOverdue).length} facturas
+
+        <Card className="bg-card shadow-xs border-border/80 p-4 flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div className="h-9 w-9 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+              <TrendingDown className="h-4 w-4" />
             </div>
-          </CardContent>
+            <Badge variant="outline" className="text-[10px] font-medium bg-rose-50/60 text-rose-700 border-rose-200">
+              Por liquidar
+            </Badge>
+          </div>
+          <div className="mt-3">
+            <p className="text-[11px] text-muted-foreground font-medium">Saldo Restante Real</p>
+            <h3 className="text-xl font-bold text-rose-600 leading-tight mt-0.5">
+              {formatCurrency(totalNetDebt)}
+            </h3>
+          </div>
+          <div className="mt-3 space-y-1">
+            <Progress
+              value={totalAmountPending > 0 ? Math.min(100, (totalNetDebt / totalAmountPending) * 100) : 0}
+              indicatorClassName="bg-rose-500"
+              className="h-1.5"
+            />
+            <p className="text-[10px] text-muted-foreground">Descontando abonos en remisiones</p>
+          </div>
+        </Card>
+
+        <Card className="bg-card shadow-xs border-border/80 p-4 flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div className="h-9 w-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <FileText className="h-4 w-4" />
+            </div>
+            <Badge variant="outline" className="text-[10px] font-medium bg-blue-50/60 text-blue-700 border-blue-200">
+              Activas
+            </Badge>
+          </div>
+          <div className="mt-3">
+            <p className="text-[11px] text-muted-foreground font-medium">Cuentas Pendientes</p>
+            <h3 className="text-xl font-bold text-foreground leading-tight mt-0.5">
+              {pendingBills.length} facturas
+            </h3>
+          </div>
+          <div className="mt-3 space-y-1">
+            <Progress value={Math.max(0, 100 - overdueRatio)} indicatorClassName="bg-blue-600" className="h-1.5" />
+            <p className="text-[10px] text-muted-foreground">Cuentas de proveedores abiertas</p>
+          </div>
+        </Card>
+
+        <Card className="bg-card shadow-xs border-border/80 p-4 flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div className="h-9 w-9 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+              <AlertTriangle className="h-4 w-4" />
+            </div>
+            <Badge variant="outline" className="text-[10px] font-medium bg-rose-50/60 text-rose-700 border-rose-200">
+              {overdueRatio.toFixed(0)}% vencidas
+            </Badge>
+          </div>
+          <div className="mt-3">
+            <p className="text-[11px] text-muted-foreground font-medium">Cuentas Vencidas</p>
+            <h3 className="text-xl font-bold text-rose-600 leading-tight mt-0.5">
+              {overdueBills.length} facturas
+            </h3>
+          </div>
+          <div className="mt-3 space-y-1">
+            <Progress value={overdueRatio} indicatorClassName="bg-rose-500" className="h-1.5" />
+            <p className="text-[10px] text-muted-foreground">Requieren atención inmediata</p>
+          </div>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Listado de Cuentas Pendientes</CardTitle>
-          <CardDescription>Visualiza las fechas límite de pago y liquida facturas pendientes.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por proveedor, concepto, categoría o monto..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="pl-9"
-              />
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Select
-                value={statusFilter}
-                onValueChange={(val) => {
-                  setStatusFilter(val);
-                  setCurrentPage(1);
-                }}
-              >
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Vencimiento" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las cuentas</SelectItem>
-                  <SelectItem value="overdue">Vencidas</SelectItem>
-                  <SelectItem value="upcoming">En tiempo</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {(searchQuery || statusFilter !== "all") && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setStatusFilter("all");
-                    setCurrentPage(1);
-                  }}
-                  className="h-10 px-2 lg:px-3 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Limpiar
-                </Button>
-              )}
-            </div>
+      {/* Filter Bar */}
+      <div className="bg-card p-3 rounded-lg border border-border/80 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-1.5 font-medium text-muted-foreground mr-1">
+            <Filter className="h-3.5 w-3.5" /> Filtros:
           </div>
 
-          {isLoading ? (
-            <div className="text-center py-10">Cargando cuentas...</div>
-          ) : filteredBills.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground text-sm">
-              {pendingBills.length === 0
-                ? "No hay cuentas pendientes por pagar."
-                : "No se encontraron cuentas con los filtros seleccionados."}
-            </div>
-          ) : (
-            <>
-              <Table>
+          <Select
+            value={statusFilter}
+            onValueChange={(val) => {
+              setStatusFilter(val);
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[170px] h-8 text-xs bg-muted/20">
+              <SelectValue placeholder="Vencimiento" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las cuentas</SelectItem>
+              <SelectItem value="overdue">Vencidas</SelectItem>
+              <SelectItem value="upcoming">En tiempo</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {(searchQuery || statusFilter !== "all") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearchQuery("");
+                setStatusFilter("all");
+                setCurrentPage(1);
+              }}
+              className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5 mr-1" />
+              Limpiar
+            </Button>
+          )}
+        </div>
+
+        <div className="text-[11px] text-muted-foreground">
+          Mostrando <span className="font-semibold text-foreground">{filteredBills.length}</span> de{" "}
+          <span className="font-semibold text-foreground">{pendingBills.length}</span> cuentas por pagar
+        </div>
+      </div>
+
+      {/* Main Table Card */}
+      <Card className="bg-card shadow-xs border-border/80 overflow-hidden">
+        <div className="p-3.5 border-b border-border/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-foreground">Listado de Cuentas Pendientes</h3>
+            <p className="text-[11px] text-muted-foreground">
+              Visualiza las fechas límite de pago y liquida facturas o remisiones pendientes.
+            </p>
+          </div>
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar proveedor, concepto, categoría..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-8 h-8 text-xs bg-muted/20"
+            />
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="text-center py-12 flex flex-col items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span>Cargando cuentas por pagar...</span>
+          </div>
+        ) : filteredBills.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground text-xs">
+            {pendingBills.length === 0
+              ? "No hay cuentas pendientes por pagar."
+              : "No se encontraron cuentas con los filtros seleccionados."}
+          </div>
+        ) : (
+          <>
+            <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Proveedor</TableHead>
-                  <TableHead>Concepto</TableHead>
-                  <TableHead>Categoría</TableHead>
-                  <TableHead>Vencimiento</TableHead>
-                  <TableHead>Estatus Vencimiento</TableHead>
-                  <TableHead>Remisiones</TableHead>
-                  <TableHead>Monto</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                <TableRow className="text-[11px] text-muted-foreground bg-muted/20">
+                  <TableHead className="py-2.5">Proveedor</TableHead>
+                  <TableHead className="py-2.5">Concepto</TableHead>
+                  <TableHead className="py-2.5">Categoría</TableHead>
+                  <TableHead className="py-2.5">Vencimiento</TableHead>
+                  <TableHead className="py-2.5">Estatus Vencimiento</TableHead>
+                  <TableHead className="py-2.5">Remisiones</TableHead>
+                  <TableHead className="py-2.5">Monto</TableHead>
+                  <TableHead className="py-2.5 text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody className="text-xs">
                 {paginatedBills.map((b) => {
                   const remaining = getDaysRemaining(b.due_date);
                   return (
-                    <TableRow key={b.id} className={remaining.isOverdue ? "bg-red-500/5" : ""}>
+                    <TableRow
+                      key={b.id}
+                      className={remaining.isOverdue ? "bg-rose-50/40 hover:bg-rose-50/70" : "hover:bg-muted/40"}
+                    >
                       <TableCell className="font-semibold text-foreground">
                         <div>
                           <span>{b.supplier?.legal_name || "Proveedor General"}</span>
                           {b.supplier?.id && (
-                            <span className="text-[10px] text-yellow-600 dark:text-yellow-500 block font-semibold">
+                            <span className="text-[10px] text-amber-600 block font-medium">
                               Deuda total: {formatCurrency(getSupplierRemainingDebt(b.supplier.id))}
                             </span>
                           )}
@@ -357,39 +497,50 @@ export function CuentasPorPagar() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{b.concept}</TableCell>
+                      <TableCell className="font-medium text-foreground">{b.concept}</TableCell>
                       <TableCell>
-                        <span
-                          className="inline-block h-2 w-2 rounded-full mr-2"
-                          style={{ backgroundColor: b.category?.color_code }}
-                        />
-                        {b.category?.name || "Operaciones"}
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted/50 text-[11px]">
+                          <span
+                            className="inline-block h-2 w-2 rounded-full shrink-0"
+                            style={{ backgroundColor: b.category?.color_code || "#64748b" }}
+                          />
+                          <span>{b.category?.name || "Operaciones"}</span>
+                        </span>
                       </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        <Calendar className="h-3.5 w-3.5 inline mr-1 text-muted-foreground" />
+                      <TableCell className="font-mono text-[11px] text-muted-foreground">
+                        <Calendar className="h-3 w-3 inline mr-1 text-muted-foreground" />
                         {b.due_date || "-"}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          {remaining.isOverdue ? (
-                            <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-                          ) : null}
-                          <span className={remaining.isOverdue ? "text-red-600 font-medium text-xs" : "text-xs text-muted-foreground"}>
+                        {remaining.isOverdue ? (
+                          <Badge
+                            variant="outline"
+                            className="bg-rose-50 text-rose-700 border-rose-200 text-[10px] font-normal py-0 inline-flex items-center gap-1"
+                          >
+                            <AlertTriangle className="h-3 w-3" />
                             {remaining.label}
-                          </span>
-                        </div>
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-normal py-0"
+                          >
+                            {remaining.label}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Button
                           size="sm"
                           variant="outline"
+                          className="h-7 text-[11px] px-2"
                           onClick={() => setActiveExpenseForRemissions(b)}
                         >
-                          <FileText className="h-3.5 w-3.5 mr-1" />
+                          <FileText className="h-3 w-3 mr-1" />
                           Ver ({b.remissions?.length || 0})
                         </Button>
                       </TableCell>
-                      <TableCell className="font-bold text-red-600">
+                      <TableCell className="font-bold text-rose-600 whitespace-nowrap">
                         <div>
                           <span>{formatCurrency(b.amount)}</span>
                           {b.remissions && b.remissions.length > 0 && (
@@ -403,27 +554,28 @@ export function CuentasPorPagar() {
                         <Button
                           size="sm"
                           onClick={() => handleMarkAsPaid(b.id)}
-                          className="bg-green-600 hover:bg-green-700"
+                          className="h-7 text-[11px] px-2.5 bg-[#1e3a5f] hover:bg-[#152a45] text-white"
                         >
-                          <Check className="h-3.5 w-3.5 mr-1" /> Registrar Pago
+                          <Check className="h-3 w-3 mr-1" /> Registrar Pago
                         </Button>
                       </TableCell>
                     </TableRow>
                   );
                 })}
               </TableBody>
-             </Table>
-             <TablePagination
-               currentPage={currentPage}
-               totalPages={totalPages}
-               onPageChange={setCurrentPage}
-               totalItems={filteredBills.length}
-               itemsPerPage={itemsPerPage}
-               onItemsPerPageChange={setItemsPerPage}
-             />
-            </>
-          )}
-        </CardContent>
+            </Table>
+            <div className="p-3 border-t border-border/50">
+              <TablePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={filteredBills.length}
+                itemsPerPage={itemsPerPage}
+                onItemsPerPageChange={setItemsPerPage}
+              />
+            </div>
+          </>
+        )}
       </Card>
 
       {/* Dialog: Manage Remissions */}
@@ -433,7 +585,8 @@ export function CuentasPorPagar() {
             <DialogTitle>Gestionar Remisiones</DialogTitle>
             <DialogDescription>
               Administra las remisiones y comprobantes de entrega para el gasto:{" "}
-              <strong className="text-foreground">{currentExpense?.concept}</strong> ({formatCurrency(currentExpense?.amount || 0)})
+              <strong className="text-foreground">{currentExpense?.concept}</strong> (
+              {formatCurrency(currentExpense?.amount || 0)})
             </DialogDescription>
           </DialogHeader>
 
@@ -441,102 +594,108 @@ export function CuentasPorPagar() {
             {/* List of Remissions */}
             <div className="space-y-3">
               <h4 className="font-semibold text-sm">Remisiones Registradas</h4>
-              {(!currentExpense?.remissions || currentExpense.remissions.length === 0) ? (
+              {!currentExpense?.remissions || currentExpense.remissions.length === 0 ? (
                 <p className="text-sm text-muted-foreground italic">No hay remisiones asociadas a este gasto.</p>
               ) : (
                 <div className="border rounded-md divide-y max-h-[250px] overflow-y-auto">
                   {[...currentExpense.remissions]
                     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
                     .map((rem: any) => (
-                    <div key={rem.id} className="flex items-center justify-between p-3 text-sm">
-                      <div className="flex flex-col gap-1.5 flex-1">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <p className="font-semibold">Folio: {rem.folio}</p>
-                          {rem.project && (
-                            <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">
-                              Proyecto: {rem.project.name}
+                      <div key={rem.id} className="flex items-center justify-between p-3 text-sm">
+                        <div className="flex flex-col gap-1.5 flex-1">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <p className="font-semibold">Folio: {rem.folio}</p>
+                            {rem.project && (
+                              <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">
+                                Proyecto: {rem.project.name}
+                              </span>
+                            )}
+                            {rem.file_url && (
+                              <a
+                                href={rem.file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline flex items-center gap-1 text-xs font-semibold"
+                              >
+                                <Paperclip className="h-3 w-3" /> Ver Archivo <ExternalLink className="h-3 w-3" />
+                              </a>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground grid grid-cols-3 gap-2 max-w-sm mb-1">
+                            <span>Monto: {formatCurrency(rem.amount || 0)}</span>
+                            <span>Pagado: {formatCurrency(rem.paid_amount || 0)}</span>
+                            <span className="font-semibold text-foreground">
+                              Restante: {formatCurrency(Math.max(0, (rem.amount || 0) - (rem.paid_amount || 0)))}
                             </span>
-                          )}
-                          {rem.file_url && (
-                            <a
-                              href={rem.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline flex items-center gap-1 text-xs font-semibold"
-                            >
-                              <Paperclip className="h-3 w-3" /> Ver Archivo <ExternalLink className="h-3 w-3" />
-                            </a>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground grid grid-cols-3 gap-2 max-w-sm mb-1">
-                          <span>Monto: {formatCurrency(rem.amount || 0)}</span>
-                          <span>Pagado: {formatCurrency(rem.paid_amount || 0)}</span>
-                          <span className="font-semibold text-foreground">
-                            Restante: {formatCurrency(Math.max(0, (rem.amount || 0) - (rem.paid_amount || 0)))}
-                          </span>
-                        </div>
+                          </div>
 
-                        {/* Visual slider of completion (Progress bar) */}
-                        <div className="space-y-1 my-2 max-w-sm pr-4">
-                          <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
-                            <div
-                              className="bg-green-600 h-full rounded-full transition-all duration-300"
-                              style={{
-                                width: `${Math.min(
-                                  100,
-                                  Math.max(0, ((rem.paid_amount || 0) / (rem.amount || 1)) * 100)
-                                )}%`,
+                          {/* Visual slider of completion (Progress bar) */}
+                          <div className="space-y-1 my-2 max-w-sm pr-4">
+                            <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                              <div
+                                className="bg-emerald-600 h-full rounded-full transition-all duration-300"
+                                style={{
+                                  width: `${Math.min(
+                                    100,
+                                    Math.max(0, ((rem.paid_amount || 0) / (rem.amount || 1)) * 100)
+                                  )}%`,
+                                }}
+                              />
+                            </div>
+                            <div className="flex justify-between text-[10px] text-muted-foreground font-semibold">
+                              <span>Pagado: {Math.round(((rem.paid_amount || 0) / (rem.amount || 1)) * 100)}%</span>
+                              <span>
+                                Restante:{" "}
+                                {Math.round(
+                                  (Math.max(0, (rem.amount || 0) - (rem.paid_amount || 0)) / (rem.amount || 1)) * 100
+                                )}
+                                %
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* inline abono register */}
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] text-muted-foreground">Abonar:</span>
+                            <Input
+                              type="number"
+                              placeholder="0.00"
+                              className="h-7 w-20 text-xs px-2"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  const val = parseFloat((e.target as HTMLInputElement).value);
+                                  if (val > 0) {
+                                    handleUpdateRemissionPayment(rem.id, (rem.paid_amount || 0) + val, rem.amount || 0);
+                                    (e.target as HTMLInputElement).value = "";
+                                  }
+                                }
                               }}
                             />
-                          </div>
-                          <div className="flex justify-between text-[10px] text-muted-foreground font-semibold">
-                            <span>Pagado: {Math.round(((rem.paid_amount || 0) / (rem.amount || 1)) * 100)}%</span>
-                            <span>Restante: {Math.round((Math.max(0, (rem.amount || 0) - (rem.paid_amount || 0)) / (rem.amount || 1)) * 100)}%</span>
+                            <span className="text-[9px] text-muted-foreground italic">(Presiona Enter)</span>
                           </div>
                         </div>
-                        
-                        {/* inline abono register */}
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] text-muted-foreground">Abonar:</span>
-                          <Input
-                            type="number"
-                            placeholder="0.00"
-                            className="h-7 w-20 text-xs px-2"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                const val = parseFloat((e.target as HTMLInputElement).value);
-                                if (val > 0) {
-                                  handleUpdateRemissionPayment(rem.id, (rem.paid_amount || 0) + val, rem.amount || 0);
-                                  (e.target as HTMLInputElement).value = "";
-                                }
-                              }
-                            }}
-                          />
-                          <span className="text-[9px] text-muted-foreground italic">(Presiona Enter)</span>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant={rem.is_paid ? "default" : "outline"}
+                            className={rem.is_paid ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}
+                            onClick={() => handleToggleRemissionPaid(rem.id, rem.is_paid, rem.amount || 0)}
+                          >
+                            <Check className="h-3.5 w-3.5 mr-1" />
+                            {rem.is_paid ? "Pagado" : "Pendiente"}
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteRemission(rem.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant={rem.is_paid ? "default" : "outline"}
-                          className={rem.is_paid ? "bg-green-600 hover:bg-green-700 text-white" : ""}
-                          onClick={() => handleToggleRemissionPaid(rem.id, rem.is_paid, rem.amount || 0)}
-                        >
-                          <Check className="h-3.5 w-3.5 mr-1" />
-                          {rem.is_paid ? "Pagado" : "Pendiente"}
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                          onClick={() => handleDeleteRemission(rem.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               )}
             </div>
@@ -576,8 +735,8 @@ export function CuentasPorPagar() {
                     { value: "none", label: "Ninguno" },
                     ...projects.map((p) => ({
                       value: p.id,
-                      label: `${p.name}${p.client?.name ? ` (${p.client.name})` : ""}`
-                    }))
+                      label: `${p.name}${p.client?.name ? ` (${p.client.name})` : ""}`,
+                    })),
                   ]}
                   placeholder="Seleccionar un proyecto..."
                   searchPlaceholder="Buscar proyecto..."
@@ -616,10 +775,16 @@ export function CuentasPorPagar() {
                   onChange={(e) => setRemissionForm({ ...remissionForm, is_paid: e.target.checked })}
                   className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                 />
-                <Label htmlFor="rem_is_paid" className="cursor-pointer text-sm">¿Esta remisión ya está pagada?</Label>
+                <Label htmlFor="rem_is_paid" className="cursor-pointer text-sm">
+                  ¿Esta remisión ya está pagada?
+                </Label>
               </div>
               <DialogFooter>
-                <Button type="submit" disabled={isUploadingRemission}>
+                <Button
+                  type="submit"
+                  disabled={isUploadingRemission}
+                  className="bg-[#1e3a5f] hover:bg-[#152a45] text-white"
+                >
                   {isUploadingRemission && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   {isUploadingRemission ? "Subiendo archivo..." : "Agregar Remisión"}
                 </Button>

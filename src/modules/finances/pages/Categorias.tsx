@@ -1,245 +1,327 @@
-import * as React from "react";
-import { useExpenseCategories, useCreateExpenseCategory, useDeleteExpenseCategory } from "../hooks";
-import { TablePagination } from "@/components/ui/TablePagination";
+import { useState } from "react";
+import { Plus, Trash2, Tag, Search } from "lucide-react";
+import {
+  useExpenseCategories,
+  useCreateExpenseCategory,
+  useDeleteExpenseCategory,
+} from "../hooks";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { sileo } from "sileo";
-import { Plus, Trash2, Loader2, Search } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { TablePagination } from "@/components/ui/TablePagination";
+import { toast } from "sonner";
 
 export function Categorias() {
-  const { data: categories = [], isLoading } = useExpenseCategories();
-  const createCategoryMutation = useCreateExpenseCategory();
-  const deleteCategoryMutation = useDeleteExpenseCategory();
+  const { data: categories, isLoading } = useExpenseCategories();
+  const createMutation = useCreateExpenseCategory();
+  const deleteMutation = useDeleteExpenseCategory();
 
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [isOpen, setIsOpen] = React.useState(false);
-  const [currentPage, setCurrentPage] = React.useState(1);
-  const [itemsPerPage, setItemsPerPage] = React.useState(10);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
 
-  const filteredCategories = React.useMemo(() => {
-    return categories.filter((c) =>
-      c.name.toLowerCase().includes(searchQuery.toLowerCase().trim())
-    );
-  }, [categories, searchQuery]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const totalPages = Math.ceil(filteredCategories.length / itemsPerPage);
-  const paginatedCategories = React.useMemo(() => {
-    return filteredCategories.slice(
-      (currentPage - 1) * itemsPerPage,
-      currentPage * itemsPerPage
-    );
-  }, [filteredCategories, currentPage, itemsPerPage]);
-
-  const [form, setForm] = React.useState({
+  const [form, setForm] = useState({
     name: "",
     color_code: "#3b82f6",
     icon: "🏷️",
   });
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name) return;
     try {
-      await createCategoryMutation.mutateAsync(form);
-      sileo.success({ title: "Categoría creada con éxito" });
+      await createMutation.mutateAsync({
+        name: form.name,
+        color_code: form.color_code,
+        icon: form.icon,
+      });
+      toast.success("Categoría creada correctamente");
       setIsOpen(false);
-      setForm({ name: "", color_code: "#3b82f6", icon: "🏷️" });
-    } catch (err: any) {
-      sileo.error({ title: `Error: ${err.message}` });
+      setForm({
+        name: "",
+        color_code: "#3b82f6",
+        icon: "🏷️",
+      });
+    } catch (error) {
+      toast.error("Error al crear categoría");
+      console.error(error);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Estás seguro de que deseas eliminar esta categoría? Los egresos asociados pasarán a no tener categoría.")) {
-      return;
-    }
+    if (!confirm("¿Seguro que deseas eliminar esta categoría?")) return;
     try {
-      await deleteCategoryMutation.mutateAsync(id);
-      sileo.success({ title: "Categoría eliminada con éxito" });
-    } catch (err: any) {
-      sileo.error({ title: `Error al eliminar: ${err.message}` });
+      await deleteMutation.mutateAsync(id);
+      toast.success("Categoría eliminada");
+    } catch {
+      toast.error(
+        "Error al eliminar categoría. Verifica que no tenga gastos asociados."
+      );
     }
   };
 
+  const filteredCategories = categories?.filter((cat) =>
+    cat.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const totalItems = filteredCategories?.length || 0;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const paginatedCategories = filteredCategories?.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 pb-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Categorías de Egresos</h2>
-          <p className="text-muted-foreground text-sm">Organiza tus egresos operativos por rubros y asigna códigos de color para visualizaciones.</p>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+            <span>Finanzas</span>
+            <span>›</span>
+            <span className="text-foreground font-medium">Categorías de Gastos</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Categorías de Gastos
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Administra los tipos de gastos e identificadores visuales de la plataforma.
+          </p>
         </div>
-        <Button onClick={() => setIsOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" /> Nueva Categoría
-        </Button>
+
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+          <DialogTrigger asChild>
+            <Button
+              size="sm"
+              className="h-9 text-xs bg-[#1e3a5f] hover:bg-[#152a45] text-white gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" /> Nueva Categoría
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Añadir Nueva Categoría</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Nombre de la Categoría</Label>
+                <Input
+                  placeholder="Ej: Software, Marketing, Transporte..."
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Color Identificador</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="color"
+                      value={form.color_code}
+                      onChange={(e) =>
+                        setForm({ ...form, color_code: e.target.value })
+                      }
+                      className="w-12 h-9 p-1 cursor-pointer"
+                    />
+                    <Input
+                      type="text"
+                      value={form.color_code}
+                      onChange={(e) =>
+                        setForm({ ...form, color_code: e.target.value })
+                      }
+                      className="flex-1 uppercase font-mono text-xs h-9"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Icono / Emoji</Label>
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Ej: 🏷️, 🍔, 💻"
+                      value={form.icon}
+                      onChange={(e) => setForm({ ...form, icon: e.target.value })}
+                      maxLength={4}
+                      required
+                      className="text-center text-lg h-9"
+                    />
+                    <div className="flex flex-wrap gap-1 p-1.5 bg-muted/40 rounded-md border border-border/60">
+                      {[
+                        "🏷️",
+                        "🛠️",
+                        "💼",
+                        "📈",
+                        "🤝",
+                        "💰",
+                        "🛒",
+                        "📄",
+                        "🚗",
+                        "🏠",
+                        "🍔",
+                        "💻",
+                        "💡",
+                        "⚙️",
+                        "🔌",
+                        "📦",
+                      ].map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => setForm({ ...form, icon: emoji })}
+                          className={`w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-sm transition-colors ${
+                            form.icon === emoji
+                              ? "bg-primary/20 ring-1 ring-primary"
+                              : ""
+                          }`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-[#1e3a5f] hover:bg-[#152a45] text-white"
+                  disabled={createMutation.isPending}
+                >
+                  {createMutation.isPending ? "Guardando..." : "Guardar Categoría"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <CardTitle>Listado de Categorías</CardTitle>
-            <CardDescription>Visualiza las categorías registradas para tus egresos y presupuestos.</CardDescription>
-          </div>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      {/* Main Card */}
+      <Card className="bg-card shadow-xs border-border/80 overflow-hidden">
+        <div className="p-4 border-b border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Buscar categoría..."
+              type="search"
+              placeholder="Buscar categorías..."
+              className="pl-8 h-9 text-xs"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              className="pl-9"
             />
           </div>
-        </CardHeader>
-        <CardContent>
+          <span className="text-xs text-muted-foreground">
+            {totalItems} categorías registradas
+          </span>
+        </div>
+
+        <CardContent className="p-0">
           {isLoading ? (
-            <div className="text-center py-10">Cargando categorías...</div>
-          ) : categories.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground text-sm">No se han registrado categorías.</div>
+            <div className="py-12 text-center text-xs text-muted-foreground">
+              Cargando categorías...
+            </div>
           ) : (
-            <>
-              <Table>
+            <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Identificador Visual</TableHead>
-                  <TableHead>Código Hexadecimal</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                <TableRow className="text-[11px] text-muted-foreground bg-muted/20">
+                  <TableHead className="w-[80px] py-2.5">Icono</TableHead>
+                  <TableHead className="py-2.5">Nombre</TableHead>
+                  <TableHead className="py-2.5">Etiqueta Visual</TableHead>
+                  <TableHead className="w-[80px] text-right py-2.5">
+                    Acciones
+                  </TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
-                {paginatedCategories.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-semibold text-foreground flex items-center gap-2">
-                      <span className="text-lg w-5 h-5 flex items-center justify-center mr-1" role="img">
-                        {c.icon || "🏷️"}
-                      </span>
-                      {c.name}
+              <TableBody className="text-xs">
+                {paginatedCategories?.map((cat) => (
+                  <TableRow key={cat.id} className="hover:bg-muted/30">
+                    <TableCell className="text-lg py-2.5">
+                      {cat.icon || "🏷️"}
                     </TableCell>
-                    <TableCell>
-                      <span className="flex items-center gap-2">
+                    <TableCell className="font-semibold text-foreground py-2.5">
+                      {cat.name}
+                    </TableCell>
+                    <TableCell className="py-2.5">
+                      <div className="flex items-center gap-2">
                         <span
-                          className="h-4 w-4 rounded-full border shadow-sm inline-block"
-                          style={{ backgroundColor: c.color_code }}
-                        />
-                        Color Distintivo
-                      </span>
+                          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border"
+                          style={{
+                            backgroundColor: `${cat.color_code}15`,
+                            color: cat.color_code,
+                            borderColor: `${cat.color_code}30`,
+                          }}
+                        >
+                          <Tag className="w-3 h-3" />
+                          {cat.name}
+                        </span>
+                      </div>
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
-                      {c.color_code}
-                    </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right py-2.5">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive/90"
-                        onClick={() => handleDelete(c.id)}
-                        disabled={deleteCategoryMutation.isPending}
-                        title="Eliminar Categoría"
+                        onClick={() => handleDelete(cat.id)}
+                        className="h-7 w-7 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
                       >
-                        {deleteCategoryMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
+                        <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
+                {paginatedCategories?.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={4}
+                      className="text-center py-8 text-xs text-muted-foreground"
+                    >
+                      No se encontraron categorías.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
-             </Table>
-             <TablePagination
-               currentPage={currentPage}
-               totalPages={totalPages}
-               onPageChange={setCurrentPage}
-               totalItems={filteredCategories.length}
-               itemsPerPage={itemsPerPage}
-               onItemsPerPageChange={setItemsPerPage}
-             />
-            </>
+            </Table>
+          )}
+          {totalItems > 0 && (
+            <div className="p-4 border-t border-border/60">
+              <TablePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+              />
+            </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Dialog: Create */}
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nueva Categoría de Egreso</DialogTitle>
-            <DialogDescription>Crea un rubro para categorizar y graficar tus gastos operacionales.</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="c_name">Nombre de Categoría *</Label>
-              <Input
-                id="c_name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Ej: Nómina, Renta, Logística"
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="c_color">Color Distintivo (HEX) *</Label>
-              <div className="flex gap-3 items-center">
-                <Input
-                  id="c_color"
-                  type="color"
-                  value={form.color_code}
-                  onChange={(e) => setForm({ ...form, color_code: e.target.value })}
-                  className="w-16 h-10 p-1 cursor-pointer"
-                />
-                <Input
-                  type="text"
-                  value={form.color_code}
-                  onChange={(e) => setForm({ ...form, color_code: e.target.value })}
-                  className="font-mono"
-                  placeholder="#3b82f6"
-                  required
-                />
-              </div>
-            </div>
-            <div className="space-y-1">
-              <Label>Emoji / Icono *</Label>
-              <div className="flex flex-wrap gap-1.5 p-2 bg-muted/40 rounded-lg border">
-                {["🏷️", "🛠️", "💼", "📈", "🤝", "💰", "🛒", "📄", "🚗", "🏠", "🍔", "💻", "💡", "⚙️", "🔌", "📦"].map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => setForm({ ...form, icon: emoji })}
-                    className={`h-8 w-8 text-lg flex items-center justify-center rounded-md transition-all ${
-                      form.icon === emoji
-                        ? "bg-primary text-primary-foreground scale-105 shadow-sm"
-                        : "hover:bg-muted text-foreground/80 hover:text-foreground"
-                    }`}
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-2 items-center mt-1.5">
-                <Input
-                  type="text"
-                  value={form.icon}
-                  onChange={(e) => setForm({ ...form, icon: e.target.value })}
-                  placeholder="O ingresa un emoji personalizado"
-                  maxLength={4}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit" disabled={createCategoryMutation.isPending}>
-                Crear Categoría
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

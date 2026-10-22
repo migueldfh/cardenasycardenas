@@ -443,6 +443,15 @@ export async function createClient(payload: {
     .single();
 
   if (error) throw new Error(error.message);
+
+  logActivity('CREATE_CLIENT', {
+    client_id: (data as any)?.id,
+    client_name: payload.name,
+    rfc: payload.tax_id_rfc,
+    title: 'Nuevo cliente registrado',
+    description: `Se dio de alta al cliente ${payload.name} (${payload.tax_id_rfc || 'Sin RFC'})`,
+  });
+
   return data as IClient;
 }
 
@@ -475,6 +484,15 @@ export async function updateClient(
     .single();
 
   if (error) throw new Error(error.message);
+
+  logActivity('UPDATE_CLIENT', {
+    client_id: id,
+    client_name: (data as any)?.name || payload.name,
+    updated_fields: Object.keys(payload),
+    title: 'Datos del cliente actualizados',
+    description: `Se actualizó el expediente fiscal de ${(data as any)?.name || payload.name || 'Cliente'}`,
+  });
+
   return data as IClient;
 }
 
@@ -486,6 +504,11 @@ export async function deleteClient(id: string): Promise<void> {
     .eq('id', id);
 
   if (error) throw new Error(error.message);
+
+  logActivity('DELETE_CLIENT', {
+    client_id: id,
+    title: 'Cliente eliminado del padrón',
+  });
 }
 
 /** Fetch products associated with a client. */

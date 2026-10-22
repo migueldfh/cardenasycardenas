@@ -50,6 +50,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { sileo } from "sileo";
+import { logActivity } from "@/api/logs";
 import { CiecVaultModal } from "@/components/CiecVaultModal";
 import {
   useFinanceClients,
@@ -447,6 +448,12 @@ export function Clients() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    void logActivity("CLIENTS_CSV_EXPORTED", {
+      module: "clientes",
+      count: filteredClients.length,
+      title: "Padrón de clientes exportado a CSV",
+      description: `Se exportó el padrón de ${filteredClients.length} clientes fiscales en formato CSV`,
+    });
     sileo.success({ title: "Archivo CSV exportado exitosamente" });
   };
 

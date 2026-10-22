@@ -1,7 +1,10 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as api from './api';
+import { fetchActivityLogs, fetchClientActivityLogs, type IActivityLog } from '@/api/logs';
 import type {
   IFinanceClient,
+  IClientDocument,
   IProject,
   IPaymentSchedule,
   IPayment,
@@ -17,6 +20,9 @@ import type {
 export const FINANCE_KEYS = {
   all: ['finances'] as const,
   clients: () => [...FINANCE_KEYS.all, 'clients'] as const,
+  clientDocuments: (clientId: string) => [...FINANCE_KEYS.all, 'client-documents', clientId] as const,
+  activityLogs: (limit?: number) => [...FINANCE_KEYS.all, 'activity-logs', limit ?? 100] as const,
+  clientActivityLogs: (clientId: string) => [...FINANCE_KEYS.all, 'client-activity-logs', clientId] as const,
   projects: () => [...FINANCE_KEYS.all, 'projects'] as const,
   project: (id: string) => [...FINANCE_KEYS.projects(), id] as const,
   payments: () => [...FINANCE_KEYS.all, 'payments'] as const,
@@ -53,8 +59,11 @@ export function useUpdateFinanceClient() {
   const queryClient = useQueryClient();
   return useMutation<IFinanceClient, Error, { id: string; payload: Parameters<typeof api.updateFinanceClient>[1] }>({
     mutationFn: ({ id, payload }) => api.updateFinanceClient(id, payload),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: FINANCE_KEYS.clients() });
+      queryClient.invalidateQueries({ queryKey: ['client', data.id] });
+      queryClient.invalidateQueries({ queryKey: FINANCE_KEYS.clientActivityLogs(data.id) });
+      queryClient.invalidateQueries({ queryKey: [...FINANCE_KEYS.all, 'activity-logs'] });
     },
   });
 }
@@ -443,4 +452,93 @@ export function useDeleteInvoice() {
     },
   });
 }
+
+// ─── Client Documents Hooks (Supabase Storage) ─────────────────────
+
+export function useClientDocuments(clientId: string) {
+  return useQuery<IClientDocument[]>({
+    queryKey: FINANCE_KEYS.clientDocuments(clientId),
+    queryFn: () => api.fetchClientDocuments(clientId),
+    enabled: !!clientId,
+  });
+}
+
+export function useCreateClientDocument() {
+  const queryClient = useQueryClient();
+  return useMutation<IClientDocument, Error, Parameters<typeof api.createClientDocument>[0]>({
+    mutationFn: api.createClientDocument,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: FINANCE_KEYS.clientDocuments(data.client_id) });
+      queryClient.invalidateQueries({ queryKey: FINANCE_KEYS.clientActivityLogs(data.client_id) });
+      queryClient.invalidateQueries({ queryKey: [...FINANCE_KEYS.all, 'activity-logs'] });
+    },
+  });
+}
+
+export function useUpdateClientDocument() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    IClientDocument,
+    Error,
+    { id: string; payload: Parameters<typeof api.updateClientDocument>[1] }
+  >({
+    mutationFn: ({ id, payload }) => api.updateClientDocument(id, payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: FINANCE_KEYS.clientDocuments(data.client_id) });
+      queryClient.invalidateQueries({ queryKey: FINANCE_KEYS.clientActivityLogs(data.client_id) });
+      queryClient.invalidateQueries({ queryKey: [...FINANCE_KEYS.all, 'activity-logs'] });
+    },
+  });
+}
+
+export function useDeleteClientDocument() {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, { id: string; clientId: string; filePath?: string | null }>({
+    mutationFn: ({ id, clientId, filePath }) => api.deleteClientDocument(id, clientId, filePath),
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: FINANCE_KEYS.clientDocuments(vars.clientId) });
+      queryClient.invalidateQueries({ queryKey: FINANCE_KEYS.clientActivityLogs(vars.clientId) });
+      queryClient.invalidateQueries({ queryKey: [...FINANCE_KEYS.all, 'activity-logs'] });
+    },
+  });
+}
+
+// ─── Activity & Business Logic Logs Hooks ────────────────────────────
+
+export function useActivityLogs(limit = 100) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const handler = () => {
+      queryClient.invalidateQueries({ queryKey: [...FINANCE_KEYS.all, 'activity-logs'] });
+    };
+    window.addEventListener('activity-log-created', handler);
+    return () => window.removeEventListener('activity-log-created', handler);
+  }, [queryClient]);
+
+  return useQuery<IActivityLog[]>({
+    queryKey: FINANCE_KEYS.activityLogs(limit),
+    queryFn: () => fetchActivityLogs(limit),
+  });
+}
+
+export function useClientActivityLogs(clientId: string, clientName?: string, limit = 100) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!clientId) return;
+    const handler = () => {
+      queryClient.invalidateQueries({ queryKey: FINANCE_KEYS.clientActivityLogs(clientId) });
+    };
+    window.addEventListener('activity-log-created', handler);
+    return () => window.removeEventListener('activity-log-created', handler);
+  }, [clientId, queryClient]);
+
+  return useQuery<IActivityLog[]>({
+    queryKey: FINANCE_KEYS.clientActivityLogs(clientId),
+    queryFn: () => fetchClientActivityLogs(clientId, clientName, limit),
+    enabled: !!clientId,
+  });
+}
+
 

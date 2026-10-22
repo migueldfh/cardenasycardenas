@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { sileo } from "sileo";
 import { useFinanceClients } from "../hooks";
+import { logActivity } from "@/api/logs";
 
 export function PendientesFiscales() {
   const { data: rawClients = [], isLoading } = useFinanceClients();
@@ -119,7 +120,14 @@ export function PendientesFiscales() {
   const startIndex = (validPage - 1) * pageSize;
   const paginatedRows = filtered.slice(startIndex, startIndex + pageSize);
 
-  const sendReminder = (client: string) => {
+  const sendReminder = (client: string, clientId?: string) => {
+    logActivity("PENDIENTE_REMINDER_SENT", {
+      client_id: clientId,
+      client_name: client,
+      title: `Recordatorio fiscal enviado a ${client}`,
+      description: `Se envió notificación de pendiente fiscal / credenciales por correo a ${client}.`,
+      category: "cumplimiento",
+    });
     sileo.success({ title: `Recordatorio enviado por correo a ${client}` });
   };
 
@@ -138,7 +146,15 @@ export function PendientesFiscales() {
         <Button
           size="sm"
           className="bg-[#1e3a5f] hover:bg-[#152a45] text-white gap-2"
-          onClick={() => sileo.success({ title: "Notificaciones enviadas a los encargados de clientes con pendientes" })}
+          onClick={() => {
+            logActivity("PENDIENTES_MASS_REMINDER_SENT", {
+              count: pendingItems.length,
+              title: "Recordatorios fiscales masivos enviados",
+              description: `Se enviaron recordatorios automáticos para ${pendingItems.length} incidencias pendientes.`,
+              category: "cumplimiento",
+            });
+            sileo.success({ title: "Notificaciones enviadas a los encargados de clientes con pendientes" });
+          }}
         >
           <Send className="h-4 w-4" /> Enviar Recordatorios Masivos
         </Button>
