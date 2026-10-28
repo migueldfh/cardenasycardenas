@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -67,7 +66,6 @@ export function FinancesDashboard() {
   const { data: stats } = useFinancialStats();
   const { data: clients = [] } = useFinanceClients();
   const { data: rawLogs = [] } = useActivityLogs(15);
-  const [selectedMonth, setSelectedMonth] = useState("Septiembre 2026");
 
   const recentActivityItems = rawLogs.slice(0, 5).map((log) => formatActivityLog(log));
 

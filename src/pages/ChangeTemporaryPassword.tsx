@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/contexts/ThemeContext";
 import { logActivity } from "@/api/logs";
@@ -21,9 +21,10 @@ import { sileo } from "sileo";
 
 export function ChangeTemporaryPassword() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { logoUrl, loginImageUrl } = useTheme();
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => searchParams.get("email") || "");
   const [temporaryPassword, setTemporaryPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
